@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+cookies.json
+*.zip
+versions/
+scautobuy/
+.DS_Store
+.env
+*.log
+build/
+dist/
+*.spec
+test_*.py
+screenshots/
