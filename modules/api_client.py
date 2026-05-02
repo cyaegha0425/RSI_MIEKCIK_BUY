@@ -1396,11 +1396,14 @@ class RSIClient:
         return False
 
     def scan_all_skus(self, category: str = "extras/standalone-ships", progress_callback=None) -> list:
-        """扫描RSI商店全量SKU（通过浏览器导航+拦截器，URL分页）
+        """扫描RSI商店全量SKU（先goto初始化JS，再reload触发GraphQL，拦截器捕获）
+        
+        RSI商店首次goto是SSR不走GraphQL，但reload后前端JS会主动发GraphQL请求
+        这跟抢船刷新拦截是同一个原理
         
         Args:
-            category: 商店分类路径，如 "extras/standalone-ships", "ships"
-            progress_callback: 进度回调函数 callback(page_num, total_found)
+            category: 商店分类路径
+            progress_callback: 进度回调 callback(page_num, total_found)
         Returns:
             list of dict: [{name, sku_id, price, in_stock}, ...]
         """
@@ -1410,48 +1413,42 @@ class RSIClient:
         seen_sku_ids = set()
         
         try:
-            log.info(f"📍 [SKU扫描] 开始扫描: {category}")
+            log.info(f"\U0001f4cd [SKU\u626b\u63cf] \u5f00\u59cb\u626b\u63cf: {category}")
             
-            # 先注册拦截器（必须在导航之前，否则错过首屏GraphQL响应）
+            base_url = f"https://robertsspaceindustries.com/en/store/pledge/browse/{category}"
+            
+            # \u5148\u6ce8\u518c\u62e6\u622a\u5668
             interceptor = SKUInterceptor(self.page, keywords="", exclude_keywords="")
             interceptor._register_interceptor()
             
-            # DEBUG: 注册全量response handler，看page.on到底有没有触发
-            _debug_resp_count = [0]
-            def _debug_all_responses(response):
-                _debug_resp_count[0] += 1
-                if _debug_resp_count[0] <= 10:
-                    log.info(f"   🔍 [DEBUG-RESP] #{_debug_resp_count[0]}: status={response.status} url={response.url[:100]}")
-            self.page.on('response', _debug_all_responses)
-            
-            # RSI商店用 ?page=N URL参数分页
-            base_url = f"https://robertsspaceindustries.com/en/store/pledge/browse/{category}"
-            
             page_num = 1
-            max_pages = 20  # 安全限制
-            empty_pages = 0  # 连续空页计数
+            max_pages = 20
+            empty_pages = 0
             
             while page_num <= max_pages:
-                # 构造分页URL
                 page_url = f"{base_url}?page={page_num}&sortField=price&sortDir=desc"
-                log.info(f"   📄 扫描第{page_num}页: {page_url}")
+                log.info(f"   \U0001f4c4 \u626b\u63cf\u7b2c{page_num}\u9875...")
                 
-                # 导航到当前页
-                interceptor._products.clear()  # 清空拦截器缓冲，只收集当前页
-                self.page.goto(page_url, wait_until="domcontentloaded", timeout=30000)
+                # \u5148goto\u8ba9\u9875\u9762JS\u521d\u59cb\u5316\uff0c\u518dreload\u89e6\u53d1GraphQL
+                if page_num == 1:
+                    self.page.goto(page_url, wait_until="domcontentloaded", timeout=30000)
+                    time.sleep(2)
                 
-                # 等待GraphQL响应
-                for wait_i in range(15):  # 最多等7.5秒
+                # \u6e05\u7a7a\u62e6\u622a\u5668\u7f13\u51b2\uff0c\u53ea\u6536\u96c6\u672c\u6b21reload\u7684\u6570\u636e
+                interceptor._products.clear()
+                interceptor._intercepted = False
+                
+                # reload\u89e6\u53d1GraphQL\uff08\u8ddf\u62a2\u8239\u4e00\u6837\u7684\u539f\u7406\uff09
+                self.page.reload(wait_until="domcontentloaded", timeout=30000)
+                
+                # \u7b49\u5f85GraphQL\u54cd\u5e94
+                for wait_i in range(15):
                     time.sleep(0.5)
                     if interceptor.get_all_products():
                         break
                 
-                # DEBUG: 没拦截到商品时dump响应摘要
+                # \u6536\u96c6\u62e6\u622a\u5230\u7684\u5546\u54c1
                 products = interceptor.get_all_products()
-                if not products and page_num == 1:
-                    log.warning(f"   🔍 [DEBUG] 第1页拦截到0个商品, 原始响应数={len(interceptor._raw_responses)}, 全量response数={_debug_resp_count[0]}")
-                    for i, (url, op, body_preview) in enumerate(interceptor._raw_responses[:5]):
-                        log.warning(f"   🔍 [DEBUG] 响应{i}: op={op}, body前200字={body_preview[:200]}")
                 new_count = 0
                 for p in products:
                     if p['skuId'] not in seen_sku_ids:
@@ -1464,30 +1461,36 @@ class RSIClient:
                         })
                         new_count += 1
                 
-                log.info(f"   📄 第{page_num}页: 拦截到{len(products)}个, 新增{new_count}个, 累计{len(all_products)}个")
+                log.info(f"   \U0001f4c4 \u7b2c{page_num}\u9875: \u62e6\u622a{len(products)}\u4e2a, \u65b0\u589e{new_count}\u4e2a, \u7d2f\u8ba1{len(all_products)}\u4e2a")
                 if progress_callback:
                     try:
                         progress_callback(page_num, len(all_products))
                     except:
                         pass
                 
-                # 空页判断：当前页没有拦截到任何商品
                 if len(products) == 0:
                     empty_pages += 1
                     if empty_pages >= 2:
-                        log.info(f"   ✅ 连续{empty_pages}页无商品，扫描完成: 共{len(all_products)}个SKU")
+                        log.info(f"   \u2705 \u8fde\u7eed{empty_pages}\u9875\u65e0\u5546\u54c1\uff0c\u626b\u63cf\u5b8c\u6210")
                         break
                 else:
                     empty_pages = 0
                 
                 page_num += 1
+                
+                # \u7ffb\u9875\uff1a\u7528goto\u5bfc\u822a\u5230\u4e0b\u4e00\u9875
+                if page_num <= max_pages:
+                    next_url = f"{base_url}?page={page_num}&sortField=price&sortDir=desc"
+                    self.page.goto(next_url, wait_until="domcontentloaded", timeout=30000)
+                    time.sleep(2)
             
             if page_num > max_pages:
-                log.info(f"   ⚠️ 已达最大页数限制({max_pages})")
+                log.info(f"   \u26a0\ufe0f \u5df2\u8fbe\u6700\u5927\u9875\u6570\u9650\u5236({max_pages})")
             
-            log.info(f"   ✅ 扫描完成: 共{len(all_products)}个SKU")
+            log.info(f"   \u2705 \u626b\u63cf\u5b8c\u6210: \u5171{len(all_products)}\u4e2aSKU")
             
         except Exception as e:
-            log.error(f"   ❌ 扫描失败: {e}")
+            log.error(f"   \u274c \u626b\u63cf\u5931\u8d25: {e}")
         
         return all_products
+
