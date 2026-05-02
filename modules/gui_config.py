@@ -239,7 +239,7 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
     """显示SKU收藏夹弹窗，支持搜索和选择"""
     import tkinter as tk
     from tkinter import messagebox
-    from .sku_bookmarks import load_bookmarks, remove_bookmark, merge_bookmarks
+    from .sku_bookmarks import load_bookmarks, remove_bookmark
     
     dialog = tk.Toplevel(parent)
     dialog.title("📦 SKU收藏夹")
@@ -413,97 +413,9 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
               fg="white", bg="#6A8CBA", relief='flat',
               padx=8, pady=2, cursor='hand2').pack(side='left', padx=5)
     
-    # 扫描按钮+关闭按钮
+    # 关闭按钮
     btn_row = tk.Frame(dialog, bg=GUI_BG_COLOR)
     btn_row.pack(pady=10)
-    
-    scan_status_var = tk.StringVar(value="")
-    scan_status_label = tk.Label(dialog, textvariable=scan_status_var,
-                                  font=("Microsoft YaHei UI", 9),
-                                  fg="#666666", bg=GUI_BG_COLOR)
-    scan_status_label.pack()
-    
-    def _scan_all_skus():
-        """触发全量SKU扫描（复用browser.create_browser启动浏览器）"""
-        scan_btn.config(state='disabled', text="扫描中...")
-        scan_status_var.set("准备启动浏览器...")
-        dialog.update()
-        
-        # 线程安全消息队列（子线程put，主线程poll）
-        import queue as _queue
-        _scan_msg_queue = _queue.Queue()
-        _scan_done = [False]
-
-        def _poll_scan_messages():
-            """主线程轮询扫描消息队列，更新GUI"""
-            while not _scan_msg_queue.empty():
-                try:
-                    msg = _scan_msg_queue.get_nowait()
-                    mtype = msg.get('type', 'status')
-                    if mtype == 'status':
-                        scan_status_var.set(msg['text'])
-                    elif mtype == 'btn':
-                        scan_btn.config(state=msg.get('state', 'normal'), text=msg.get('text', '🔍 扫描全量SKU'))
-                    elif mtype == 'refresh':
-                        refresh_list()
-                except:
-                    break
-            if not _scan_done[0]:
-                dialog.after(200, _poll_scan_messages)
-
-        def do_scan():
-            pw = None
-            try:
-                from . import browser as browser_mod
-                from .api_client import RSIClient
-                from playwright.sync_api import sync_playwright
-                
-                # 复用browser模块（杀Edge→启动CDP→5次重试）
-                _scan_msg_queue.put({'type': 'status', 'text': '启动浏览器...'})
-                pw = sync_playwright().start()
-                ctx = browser_mod.create_browser(pw)
-                if not ctx:
-                    _scan_msg_queue.put({'type': 'status', 'text': '❌ 浏览器启动失败'})
-                    return
-                
-                # 加载cookies（复用登录态）
-                _scan_msg_queue.put({'type': 'status', 'text': '加载登录态...'})
-                browser_mod.login(ctx)
-                
-                # 必须创建新page！CDP连接的ctx.pages[0]是Edge预存tab，Playwright事件hook不上去
-                page = ctx.new_page()
-                
-                # 扫描
-                client = RSIClient(page)
-                
-                def on_progress(pg, total):
-                    _scan_msg_queue.put({'type': 'status', 'text': f'扫描中: 第{pg}页, 已发现{total}个SKU'})
-                
-                _scan_msg_queue.put({'type': 'status', 'text': '正在扫描RSI商店...'})
-                products = client.scan_all_skus(progress_callback=on_progress)
-                if products:
-                    added = merge_bookmarks(products)
-                    _scan_msg_queue.put({'type': 'status', 'text': f'✅ 扫描完成: 发现{len(products)}个, 新增{added}个'})
-                    _scan_msg_queue.put({'type': 'refresh'})
-                else:
-                    _scan_msg_queue.put({'type': 'status', 'text': '⚠️ 未扫描到SKU，请确保已登录RSI'})
-            except Exception as e:
-                _scan_msg_queue.put({'type': 'status', 'text': f'❌ 扫描失败: {str(e)[:60]}'})
-            finally:
-                _scan_msg_queue.put({'type': 'btn', 'state': 'normal', 'text': '🔍 扫描全量SKU'})
-                _scan_done[0] = True
-        
-        import threading
-        t = threading.Thread(target=do_scan, daemon=True)
-        t.start()
-        # 启动主线程轮询（子线程通过queue发消息，主线程poll更新GUI）
-        dialog.after(200, _poll_scan_messages)
-    
-    scan_btn = tk.Button(btn_row, text="🔍 扫描全量SKU", command=_scan_all_skus,
-              font=("Microsoft YaHei UI", 11, "bold"),
-              fg="white", bg="#5B8C5A", relief='flat',
-              padx=15, pady=5, cursor='hand2')
-    scan_btn.pack(side='left', padx=5)
     
     tk.Button(btn_row, text="关闭", command=dialog.destroy,
               font=("Microsoft YaHei UI", 11, "bold"),

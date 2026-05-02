@@ -49,30 +49,3 @@ def remove_bookmark(sku_id: str):
     bookmarks = [b for b in bookmarks if b.get('sku_id') != sku_id]
     save_bookmarks(bookmarks)
 
-def merge_bookmarks(new_items: list) -> int:
-    """批量合并SKU到收藏夹（已存在的不覆盖）
-    
-    Args:
-        new_items: [{name, sku_id, price, in_stock}, ...]
-    Returns:
-        新增数量
-    """
-    bookmarks = load_bookmarks()
-    existing_ids = {b.get('sku_id') for b in bookmarks}
-    added = 0
-    for item in new_items:
-        sku_id = str(item.get('sku_id', ''))
-        if not sku_id or sku_id in existing_ids:
-            continue
-        name = item.get('name', 'Unknown')
-        price = item.get('price', 0)
-        try:
-            price = float(price)
-        except:
-            price = 0
-        bookmarks.append({'name': name, 'sku_id': sku_id, 'price': price})
-        existing_ids.add(sku_id)
-        added += 1
-    if added > 0:
-        save_bookmarks(bookmarks)
-    return added
