@@ -138,7 +138,7 @@ def _show_advanced_settings_dialog(parent, current_offset, current_proxy, curren
     dialog.attributes('-topmost', True)
     dialog.transient(parent)
     dialog.grab_set()
-    dialog.resizable(False, False)
+    dialog.resizable(True, True)
     
     # 背景色
     dialog.configure(bg=GUI_BG_COLOR)
@@ -244,10 +244,11 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
     dialog = tk.Toplevel(parent)
     dialog.title("📦 SKU收藏夹")
     dialog.geometry("520x520")
+    dialog.minsize(400, 350)
     dialog.attributes('-topmost', True)
     dialog.transient(parent)
     dialog.grab_set()
-    dialog.resizable(False, False)
+    dialog.resizable(True, True)
     dialog.configure(bg=GUI_BG_COLOR)
     
     # 标题
@@ -280,8 +281,13 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
         lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
     )
     
-    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
     canvas.configure(yscrollcommand=scrollbar.set)
+    
+    # 窗口拉伸时canvas宽度跟随
+    def _on_canvas_resize(event):
+        canvas.itemconfig(canvas_window, width=event.width)
+    canvas.bind("<Configure>", _on_canvas_resize)
     
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
