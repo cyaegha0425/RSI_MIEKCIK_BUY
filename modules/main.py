@@ -378,11 +378,11 @@ def _run_playwright_thread(result_queue):
                     interceptor = SKUInterceptor(page, keywords, exclude_keywords)
                     log.info("   📍 SKU拦截器已注册，等待GraphQL响应...")
                 
-                # ===== T-5s 开始API加购轮询 =====
-                T_MINUS_5 = target - 5
+                # ===== T-10s 开始API加购轮询 =====
+                T_MINUS_10 = target - 10
                 
-                # 等待T-5
-                while time.time() - server_offset < T_MINUS_5:
+                # 等待T-10
+                while time.time() - server_offset < T_MINUS_10:
                     if gui and gui.is_cancel_clicked():
                         log.info("⚠️ 用户取消抢购")
                         if gui: gui.close_and_return_to_config()
@@ -391,7 +391,7 @@ def _run_playwright_thread(result_queue):
                     server_offset = scheduler_direct.check_and_calibrate()
                     time.sleep(0.01)
                 
-                log.info(f"   ⏰ T-5s 到达，开始API加购轮询...")
+                log.info(f"   ⏰ T-10s 到达，开始API加购轮询...")
                 
                 # 确定使用的skuId
                 current_sku_id = sku_id
@@ -429,10 +429,10 @@ def _run_playwright_thread(result_queue):
                         else:
                             log.warning("   ⚠️ 未拦截到任何商品信息")
                 
-                # ===== API加购轮询（T-5s ~ T+3s） =====
+                # ===== API加购轮询（T-10s ~ T+5s） =====
                 cart_success = False
                 poll_start = time.time()
-                poll_timeout = 8  # 8秒超时
+                poll_timeout = 15  # 15秒超时(T-10~T+5)
                 
                 while time.time() - server_offset < target + 3:
                     # 检查是否到达T-0
@@ -471,7 +471,7 @@ def _run_playwright_thread(result_queue):
                     # 0.5秒间隔
                     time.sleep(0.5)
                 
-                # ===== T+3s还没抢到，回退DOM加购 =====
+                # ===== T+5s还没抢到，回退DOM加购 =====
                 if not cart_success:
                     log.warning("   ⚠️ API加购失败，回退DOM加购...")
                     if gui: gui.update_status("回退DOM加购...", "cart")
