@@ -389,6 +389,8 @@ def _run_playwright_thread(result_queue):
                 cart_success = False
                 current_sku_id = sku_id
                 
+                _cancelled = False
+                
                 if input_mode == "sku":
                     # ===== SKU ID直购：T-10开始API加购轮询 =====
                     T_MINUS_10 = target - 10
@@ -410,6 +412,7 @@ def _run_playwright_thread(result_queue):
                     while time.time() - server_offset < target + 5:
                         if gui and gui.is_cancel_clicked():
                             log.info("⚠️ 用户取消抢购")
+                            _cancelled = True
                             break
                         
                         success, error_code = client.api_add_to_cart(current_sku_id)
@@ -487,6 +490,7 @@ def _run_playwright_thread(result_queue):
                         while time.time() - server_offset < target + 5:
                             if gui and gui.is_cancel_clicked():
                                 log.info("⚠️ 用户取消抢购")
+                                _cancelled = True
                                 break
                             
                             # 尝试再次拦截
@@ -510,7 +514,9 @@ def _run_playwright_thread(result_queue):
                             time.sleep(0.5)
                 
                 # ===== T+5s还没抢到，回退DOM加购 =====
-                if not cart_success:
+                if _cancelled:
+                    log.info("   用户已取消，跳过DOM兜底")
+                elif not cart_success:
                     log.warning("   ⚠️ API加购失败，回退DOM加购...")
                     if gui: gui.update_status("回退DOM加购...", "cart")
                     
