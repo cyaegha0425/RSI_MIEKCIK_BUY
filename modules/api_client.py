@@ -1348,13 +1348,36 @@ class RSIClient:
         self.cart_data['ambush_ready'] = True
         return True
     
+    def _ambush_refill(self) -> bool:
+        """伏击模式 - 重新装填信用点+NextStep"""
+        log.info("📍 [伏击模式] 重新装填...")
+        total = self.cart_total or self.cart_data.get('total', 0)
+        if total <= 0:
+            log.warning("   ⚠️ 无法获取价格，跳过信用点重装")
+        else:
+            result = self.gql("AddCreditMutation", {"amount": total, "storeFront": "pledge"})
+            time.sleep(0.1)
+            credits = result.get('data', {}).get('store', {}).get('cart', {}).get('totals', {}).get('credits', {})
+            if credits:
+                log.info(f"   ✅ 信用点重装: {credits.get('amount', '?')}, max={credits.get('maxApplicable', '?')}")
+        # NextStep x2
+        result = self.gql("NextStepMutation", {"storeFront": "pledge"})
+        move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+        log.info(f"   NextStep1: moveNext={move_next}")
+        result = self.gql("NextStepMutation", {"storeFront": "pledge"})
+        move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+        order_slug = result.get('data', {}).get('store', {}).get('order', {}).get('slug', '')
+        log.info(f"   NextStep2: moveNext={move_next}, orderSlug={order_slug}")
+        return move_next
+
     def ambush_validate(self) -> bool:
-        """伏击模式 - T-0时刻执行最终验证（带重试）
+        """伏击模式 - T-0时刻执行最终验证（带装填保护）
         
-        失败则0.3秒间隔重试，最多3次
+        validate失败后检查流程状态，如流程丢失则重新装填再重试
         """
-        for attempt in range(1, 9):
-            log.info(f"📍 [伏击模式] T-0 执行验证... (尝试 {attempt}/8)")
+        refill_count = 0
+        for attempt in range(1, 5):
+            log.info(f"📍 [伏击模式] T-0 执行验证... (尝试 {attempt}/4)")
             
             result = self.gql("CartValidateCartMutation", {"token": "", "mark": "", "storeFront": "pledge"})
             
@@ -1370,9 +1393,25 @@ class RSIClient:
                     pass
                 return True
             
-            if attempt < 8:
-                log.warning(f"   ⚠️ 验证失败，0.2秒后重试...")
-                time.sleep(0.2)
+            # validate失败，检查流程是否还在
+            if attempt < 4:
+                check = self.gql("NextStepMutation", {"storeFront": "pledge"})
+                check_move = check.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+                if check_move:
+                    log.warning(f"   ⚠️ 验证失败，流程仍在，0.2秒后重试validate...")
+                    time.sleep(0.2)
+                else:
+                    if refill_count < 2:
+                        refill_count += 1
+                        log.warning(f"   ⚠️ 流程丢失，重新装填 ({refill_count}/2)...")
+                        if self._ambush_refill():
+                            time.sleep(0.2)
+                        else:
+                            log.error("   ❌ 重新装填失败")
+                            time.sleep(0.3)
+                    else:
+                        log.error("   ❌ 超过最大重装次数，放弃")
+                        break
             else:
                 log.error(f"   ❌ 验证失败: {json.dumps(result, ensure_ascii=False)[:500]}")
         
