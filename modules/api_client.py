@@ -1439,6 +1439,11 @@ class RSIClient:
                 interceptor._intercepted = False
                 
                 # reload\u89e6\u53d1GraphQL\uff08\u8ddf\u62a2\u8239\u4e00\u6837\u7684\u539f\u7406\uff09
+                # DEBUG: 注册全量response handler
+                _dbg_urls = []
+                def _dbg_resp(response):
+                    _dbg_urls.append(f"{response.status} {response.url[:120]}")
+                self.page.on('response', _dbg_resp)
                 self.page.reload(wait_until="domcontentloaded", timeout=30000)
                 
                 # \u7b49\u5f85GraphQL\u54cd\u5e94
@@ -1449,6 +1454,10 @@ class RSIClient:
                 
                 # \u6536\u96c6\u62e6\u622a\u5230\u7684\u5546\u54c1
                 products = interceptor.get_all_products()
+                if not products and page_num <= 2:
+                    log.warning(f"   [DEBUG] 第{page_num}页reload后拦截0个, 共{len(_dbg_urls)}个response")
+                    for i, r in enumerate(_dbg_urls[:20]):
+                        log.warning(f"   [DEBUG] resp[{i}]: {r}")
                 new_count = 0
                 for p in products:
                     if p['skuId'] not in seen_sku_ids:
