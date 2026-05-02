@@ -538,10 +538,12 @@ def _run_playwright_thread(result_queue):
                                     log.info("   ✅ API加购成功!")
                                     cart_success = True
                                     CFG["LAST_SKU_ID"] = current_sku_id
-                                    # 自动保存到收藏夹
+                                    # 自动保存到收藏夹(优先用拦截器真实商品名)
                                     try:
                                         from .sku_bookmarks import add_bookmark
-                                        add_bookmark(keywords.strip() or "Unknown", current_sku_id, float(CFG.get("ITEM_PRICE", 0) or 0))
+                                        _bm_name = interceptor.get_matched_name() if interceptor and interceptor.get_matched_name() else (keywords.strip() or "Unknown")
+                                        _bm_price = interceptor.get_price() if interceptor and interceptor.get_price() else float(CFG.get("ITEM_PRICE", 0) or 0)
+                                        add_bookmark(_bm_name, current_sku_id, _bm_price)
                                     except: pass
                                     break
                                 if error_code == "HTTP429":
