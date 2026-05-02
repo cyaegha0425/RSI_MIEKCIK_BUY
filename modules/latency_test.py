@@ -185,35 +185,71 @@ def show_latency_dialog(parent):
         result_text.config(state='disabled')
         stats_label.config(text="")
 
-        try:
-            cookie_str, csrf_token = get_auth_from_browser()
-            if not cookie_str:
-                update_text("❌ 无法获取Cookies\n请确保浏览器已启动CDP模式并登录RSI\n")
+        # 共享结果队列（线程安全）
+        import queue as _queue
+        msg_queue = _queue.Queue()
+        test_done = [False]
+
+        def _worker():
+            """后台线程执行实际测试"""
+            try:
+                cookie_str, csrf_token = get_auth_from_browser()
+                if not cookie_str:
+                    msg_queue.put(("error", "❌ 无法获取Cookies\n请确保浏览器已启动CDP模式并登录RSI\n"))
+                    return
+
+                msg_queue.put(("info", "✅ 认证获取成功\n\n"))
+
+                results = []
+                def on_result(num, ms, status):
+                    bar = "█" * int(ms / 100)
+                    results.append(ms)
+                    msg_queue.put(("result", f"  #{num:02d}  {ms:6.0f}ms {bar} {status}\n"))
+
+                measure_latency(cookie_str, csrf_token, count=10, callback=on_result)
+
+                stats = analyze_results(results)
+                if stats:
+                    msg_queue.put(("summary", stats))
+            except Exception as e:
+                msg_queue.put(("error", f"\n❌ 测试失败: {e}\n请确保浏览器已启动CDP模式\n"))
+            finally:
+                test_done[0] = True
+
+        def _poll_messages():
+            """主线程轮询消息队列更新GUI"""
+            while not msg_queue.empty():
+                try:
+                    msg_type, msg_data = msg_queue.get_nowait()
+                    if msg_type == "error":
+                        update_text(msg_data)
+                    elif msg_type == "info":
+                        update_text(msg_data)
+                    elif msg_type == "result":
+                        update_text(msg_data)
+                    elif msg_type == "summary":
+                        stats = msg_data
+                        update_text(f"\n{'─' * 45}\n")
+                        update_text(f"  平均: {stats['avg']:.0f}ms | P50: {stats['p50']:.0f}ms | P90: {stats['p90']:.0f}ms\n")
+                        update_text(f"  最小: {stats['min']:.0f}ms | 最大: {stats['max']:.0f}ms | 抖动: {stats['jitter']:.0f}ms\n")
+                        update_text(f"  评级: {stats['grade']}\n")
+                        update_text(f"  预估轮询: 0.5s间隔实际约{stats['poll_rate']:.1f}秒/次\n")
+                        stats_label.config(text=f"{stats['grade']}  平均{stats['avg']:.0f}ms  P50={stats['p50']:.0f}ms")
+                except:
+                    break
+
+            if test_done[0]:
                 test_running[0] = False
                 start_btn.config(state='normal', text="开始测试")
-                return
+            else:
+                dialog.after(200, _poll_messages)
 
-            update_text("✅ 认证获取成功\n\n")
-
-            def on_result(num, ms, status):
-                bar = "█" * int(ms / 100)
-                update_text(f"  #{num:02d}  {ms:6.0f}ms {bar} {status}\n")
-
-            results = measure_latency(cookie_str, csrf_token, count=10, callback=on_result)
-
-            stats = analyze_results(results)
-            if stats:
-                update_text(f"\n{'─' * 45}\n")
-                update_text(f"  平均: {stats['avg']:.0f}ms | P50: {stats['p50']:.0f}ms | P90: {stats['p90']:.0f}ms\n")
-                update_text(f"  最小: {stats['min']:.0f}ms | 最大: {stats['max']:.0f}ms | 抖动: {stats['jitter']:.0f}ms\n")
-                update_text(f"  评级: {stats['grade']}\n")
-                update_text(f"  预估轮询: 0.5s间隔实际约{stats['poll_rate']:.1f}秒/次\n")
-                stats_label.config(text=f"{stats['grade']}  平均{stats['avg']:.0f}ms  P50={stats['p50']:.0f}ms")
-        except Exception as e:
-            update_text(f"\n❌ 测试失败: {e}\n请确保浏览器已启动CDP模式\n")
-
-        test_running[0] = False
-        start_btn.config(state='normal', text="开始测试")
+        # 启动后台线程
+        import threading as _threading
+        t = _threading.Thread(target=_worker, daemon=True)
+        t.start()
+        # 启动GUI轮询
+        dialog.after(200, _poll_messages)
 
     start_btn = tk.Button(btn_frame, text="开始测试", command=run_test,
                           font=("Microsoft YaHei UI", 12, "bold"),

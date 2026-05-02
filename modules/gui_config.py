@@ -445,17 +445,17 @@ def _show_config_dialog():
     warning_time = tk.Label(root, text="(早于现在可能出现未知BUG)",
                            font=("Microsoft YaHei UI", 9),
                            fg="#666666", bg=CFG_BG_COLOR)
-    warning_time.place(relx=0.5, y=260, anchor='n')
+    warning_time.place(relx=0.5, y=230, anchor='n')
     
     # ===== 偏移+关键词（横排布局） =====
     # 偏移行
     offset_row = tk.Frame(root, bg=CFG_BG_COLOR)
-    offset_row.place(relx=0.5, y=300, anchor='n')
+    offset_row.place(relx=0.5, y=270, anchor='n')
     
     tk.Label(offset_row, text="🕐偏移(秒)", font=("Microsoft YaHei UI", 11),
              fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR).pack(side='left')
     
-    _create_help_button(offset_row, "留空=自动校准，手动填入可覆盖\n正数=本地比服务器快，需多等\n负数=本地比服务器慢，可提前发\n如本地快0.15秒，填 +0.15").pack(side='left', padx=3)
+    _create_help_button(offset_row, "在自动校准基础上微调（叠加计算）\n正数=本地比服务器快，需多等\n负数=本地比服务器慢，可提前发\n如本地快0.15秒，填+0.15\n勾选\"纯手动\"则跳过自动校准").pack(side='left', padx=3)
     
     offset_entry = tk.Entry(offset_row, font=("Microsoft YaHei UI", 11), width=10,
                             bg="white", fg="black", insertbackground="black",
@@ -464,8 +464,11 @@ def _show_config_dialog():
     offset_entry.insert(0, saved_offset)
     offset_entry.pack(side='left', padx=5)
     
-    tk.Label(offset_row, text="留空自动校准", font=("Microsoft YaHei UI", 9),
-             fg="#666666", bg=CFG_BG_COLOR).pack(side='left')
+    manual_only_var = tk.BooleanVar(value=saved_config.get("manual_only", False) if saved_config else False)
+    tk.Checkbutton(offset_row, text="纯手动", variable=manual_only_var,
+                   font=("Microsoft YaHei UI", 10), fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR,
+                   selectcolor=GUI_BG_COLOR, activebackground=CFG_BG_COLOR,
+                   activeforeground=GUI_TEXT_COLOR).pack(side='left', padx=5)
     
     # ===== 输入方式选择区域 =====
     input_mode_frame = tk.Frame(root, bg=CFG_BG_COLOR, padx=4, pady=2)
@@ -475,7 +478,7 @@ def _show_config_dialog():
              fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR).pack(side='left', padx=(0, 5))
     
     # 输入方式变量
-    input_mode_var = tk.StringVar(value=saved_config.get("input_mode", "keyword") if saved_config else "keyword")
+    input_mode_var = tk.StringVar(value=saved_config.get("input_mode", "intercept") if saved_config else "intercept")
     
     def on_input_mode_change(mode):
         """切换输入方式"""
@@ -484,12 +487,10 @@ def _show_config_dialog():
             sku_entry.config(state='normal')
             search_entry.config(state='disabled')
             exclude_entry.config(state='disabled')
-            sku_hint_label.config(fg="#666666")
-        else:  # keyword
+        else:  # intercept
             sku_entry.config(state='disabled')
             search_entry.config(state='normal')
             exclude_entry.config(state='normal')
-            sku_hint_label.config(fg="#AAAAAA")
     
     # SKU ID直购选项
     sku_radio = tk.Radiobutton(input_mode_frame, text="SKU ID直购",
@@ -499,15 +500,6 @@ def _show_config_dialog():
                                selectcolor=GUI_BG_COLOR,
                                command=lambda: on_input_mode_change("sku"))
     sku_radio.pack(side='left', padx=5)
-    
-    # 关键词搜索选项
-    keyword_radio = tk.Radiobutton(input_mode_frame, text="关键词搜索",
-                                   variable=input_mode_var, value="keyword",
-                                   font=("Microsoft YaHei UI", 10),
-                                   fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR,
-                                   selectcolor=GUI_BG_COLOR,
-                                   command=lambda: on_input_mode_change("keyword"))
-    keyword_radio.pack(side='left', padx=5)
     
     # 刷新拦截选项
     intercept_radio = tk.Radiobutton(input_mode_frame, text="刷新拦截",
@@ -525,7 +517,7 @@ def _show_config_dialog():
     tk.Label(sku_row, text="📦SKU ID:", font=("Microsoft YaHei UI", 11),
              fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR).pack(side='left')
     
-    _create_help_button(sku_row, "不明白这是什么不要用\n只需输入数字部分，如: 308456").pack(side='left', padx=3)
+    _create_help_button(sku_row, "只需输入数字部分，如: 308456\n刷新拦截模式下此框自动填入").pack(side='left', padx=3)
     
     sku_entry = tk.Entry(sku_row, font=("Microsoft YaHei UI", 11), width=22,
                          bg="white", fg="black", insertbackground="black",
@@ -534,24 +526,15 @@ def _show_config_dialog():
     sku_entry.insert(0, saved_sku)
     sku_entry.pack(side='left', padx=5)
     
-    sku_hint_label = tk.Label(sku_row, text="(不明白这是什么不要用)",
-                              font=("Microsoft YaHei UI", 9),
-                              fg="#AAAAAA", bg=CFG_BG_COLOR)
-    sku_hint_label.pack(side='left')
+
     
-    # ===== 刷新拦截提示行 =====
-    intercept_row = tk.Frame(root, bg=CFG_BG_COLOR)
-    intercept_row.place(relx=0.5, y=365, anchor='n')
-    
-    tk.Label(intercept_row, text="💡刷新拦截: T-0刷新页面时自动从GraphQL响应中提取skuId",
-             font=("Microsoft YaHei UI", 9),
-             fg="#666666", bg=CFG_BG_COLOR).pack(side='left')
+
     
     # 搜索关键词行
     search_row = tk.Frame(root, bg=CFG_BG_COLOR)
-    search_row.place(relx=0.5, y=395, anchor='n')
+    search_row.place(relx=0.5, y=380, anchor='n')
     
-    tk.Label(search_row, text="🔍搜索关键词", font=("Microsoft YaHei UI", 11),
+    tk.Label(search_row, text="🔍搜索关键词(可选过滤)", font=("Microsoft YaHei UI", 11),
              fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR).pack(side='left')
     
     _create_help_button(search_row, "搜索关键词：\n1. 输入目标商品名称\n2. 如 Kraken、Aurora MK II\n3. 多词用空格分隔\n4. URL前缀自动拼接").pack(side='left', padx=3)
@@ -564,7 +547,7 @@ def _show_config_dialog():
     
     # 排除关键词行
     exclude_row = tk.Frame(root, bg=CFG_BG_COLOR)
-    exclude_row.place(relx=0.5, y=440, anchor='n')
+    exclude_row.place(relx=0.5, y=420, anchor='n')
     
     tk.Label(exclude_row, text="🚫排除关键词(伏击无效)", font=("Microsoft YaHei UI", 11),
              fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR).pack(side='left')
@@ -578,8 +561,8 @@ def _show_config_dialog():
     exclude_entry.pack(side='left', padx=5)
     
     # ===== 测试模式+高级设置（横排） =====
-    settings_row = tk.Frame(root, bg=CFG_BG_COLOR)
-    settings_row.place(relx=0.5, y=485, anchor='n')
+    settings_row = tk.Frame(root, bg=GUI_BG_COLOR)
+    settings_row.place(relx=0.5, y=470, anchor='n')
     
 
     # 高级设置变量
@@ -608,23 +591,21 @@ def _show_config_dialog():
                           font=("Microsoft YaHei UI", 13, "bold"),
                           fg="white", bg="#6A8CBA", relief='flat',
                           padx=25, pady=10, cursor='hand2')
-    start_btn.place(relx=0.38, y=545, anchor='n')
+    start_btn.place(relx=0.38, y=520, anchor='n')
     
     cancel_btn = tk.Button(root, text="取消", command=lambda: None,
                            font=("Microsoft YaHei UI", 13, "bold"),
                            fg="white", bg="#9E6B7A", relief='flat',
                            padx=25, pady=10, cursor='hand2')
-    cancel_btn.place(relx=0.62, y=545, anchor='n')
+    cancel_btn.place(relx=0.62, y=520, anchor='n')
     
     # ===== 警告提示 =====
     warning_label = tk.Label(root, text="⚠️ 请提前清空购物车，登录好账号",
                             font=("Microsoft YaHei UI", 10),
                             fg="black", bg=CFG_BG_COLOR)
-    warning_label.place(relx=0.5, y=615, anchor='n')
+    warning_label.place(relx=0.5, y=590, anchor='n')
     
-    # 刷新拦截提示
-    if intercept_radio:
-        intercept_radio.bind("<Button-1>", lambda e: intercept_radio.select())
+
     
     # ===== 作者署名 =====
     author_label = tk.Label(root, text="by 咩咩莉娅 V3.0.0",
@@ -653,6 +634,7 @@ def _show_config_dialog():
             "input_mode": input_mode_var.get(),
             "ambush_mode": ambush_mode_var.get(),
             "manual_time_offset": offset_entry.get().strip(),
+            "manual_only": manual_only_var.get(),
         }
         _save_config(config_data)
         
@@ -673,6 +655,8 @@ def _show_config_dialog():
             CFG["PROXY"] = advanced_proxy.get()
         if offset_entry.get().strip():
             CFG["MANUAL_TIME_OFFSET"] = offset_entry.get().strip()
+        
+        CFG["MANUAL_ONLY"] = manual_only_var.get()
         
         result["continue"] = True
         root.destroy()

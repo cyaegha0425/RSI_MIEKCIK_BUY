@@ -117,6 +117,9 @@ class RSIClient:
             if return_headers:
                 return final_result, headers
             return final_result
+        except urllib.error.HTTPError as e:
+            log.error(f"❌ GraphQL请求HTTP错误: {e.code} {e.reason}")
+            return {"__http_status__": e.code}
         except Exception as e:
             log.error(f"❌ GraphQL请求失败: {e}")
             return {}
@@ -313,6 +316,15 @@ class RSIClient:
         
         try:
             result = self.gql("AddCartMultiItemMutation", variables)
+            
+            # 检查HTTP层错误（gql返回__http_status__表示HTTPError）
+            http_status = result.get('__http_status__')
+            if http_status:
+                if http_status == 429:
+                    return (False, "HTTP429")
+                elif http_status == 500:
+                    return (False, "HTTP500")
+                return (False, "Other")
             
             if result.get('errors'):
                 errors = result['errors']

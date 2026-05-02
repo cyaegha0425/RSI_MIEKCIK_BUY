@@ -13,5 +13,6 @@ from . import gui_progress
 from . import main
 from . import sku_interceptor
 from . import calibration
+from .latency_test import show_latency_dialog
 
 __all__ = ['config', 'api_client', 'browser', 'gui_config', 'gui_progress', 'main', 'sku_interceptor', 'calibration']

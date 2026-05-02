@@ -102,28 +102,35 @@ def _run_playwright_thread(result_queue):
                 log.info("\n📍 [时间校准]")
                 if gui: gui.update_status("校准时间...", "calibrate")
                 
-                # 获取手动偏移（优先级最高）
+                # 获取手动偏移（微调值）
                 manual_offset = 0.0
                 manual_offset_str = CFG.get("MANUAL_TIME_OFFSET", "")
                 if manual_offset_str:
                     try:
                         manual_offset = float(manual_offset_str)
-                        log.info(f"   使用手动偏移: {manual_offset:+.3f}秒")
+                        log.info(f"   手动时间偏移: {manual_offset:+.3f}s")
                     except:
                         log.warning(f"   手动偏移格式错误: {manual_offset_str}")
                 
-                # 自动校准（如果没有手动偏移）
-                if manual_offset == 0.0:
-                    server_offset = client.calibrate_time()
-                    CFG["SERVER_TIME_OFFSET"] = server_offset
-                    log.info(f"   使用自动校准偏移: {server_offset:+.3f}秒")
-                else:
+                manual_only = CFG.get("MANUAL_ONLY", False)
+                
+                if manual_only:
+                    # 纯手动模式：跳过自动校准
                     server_offset = manual_offset
                     CFG["SERVER_TIME_OFFSET"] = manual_offset
-                    # 跳过自动校准，直接标记成功
+                    log.info(f"   纯手动模式，偏移: {server_offset:+.3f}s")
+                else:
+                    # 自动校准 + 手动微调叠加
+                    server_offset = client.calibrate_time()
+                    CFG["SERVER_TIME_OFFSET"] = server_offset
+                    log.info(f"   自动校准偏移: {server_offset:+.3f}s")
+                    if manual_offset != 0.0:
+                        server_offset += manual_offset
+                        CFG["SERVER_TIME_OFFSET"] = server_offset
+                        log.info(f"   叠加手动微调: {manual_offset:+.3f}s → 最终: {server_offset:+.3f}s")
                 
                 if gui: gui.update_step("calibrate", True)
-                if gui: gui.update_calibration(server_offset, is_manual=(manual_offset != 0.0))
+                if gui: gui.update_calibration(server_offset, is_manual=manual_only)
                 
                 # ===== 伏击模式分支 =====
                 if CFG.get("AMBUSH_MODE", False):
@@ -354,7 +361,7 @@ def _run_playwright_thread(result_queue):
                 # ===== V3.0.0 正面硬刚模式 - 全API抢购架构 =====
                 
                 # 获取输入模式
-                input_mode = CFG.get("INPUT_MODE", "keyword")
+                input_mode = CFG.get("INPUT_MODE", "intercept")
                 sku_id = CFG.get("SKU_ID", "")
                 keywords = CFG.get("SEARCH_KEYWORDS", "")
                 exclude_keywords = CFG.get("EXCLUDE_KEYWORDS", "")
@@ -374,7 +381,7 @@ def _run_playwright_thread(result_queue):
                 
                 # ===== 预热阶段完成后，注册SKU拦截器 =====
                 interceptor = None
-                if input_mode in ("keyword", "intercept"):
+                if input_mode in ("intercept",):
                     interceptor = SKUInterceptor(page, keywords, exclude_keywords)
                     log.info("   📍 SKU拦截器已注册，等待GraphQL响应...")
                 
@@ -397,7 +404,7 @@ def _run_playwright_thread(result_queue):
                 current_sku_id = sku_id
                 
                 # 如果使用关键词/刷新拦截，且还没拦截到skuId，则需要刷新页面拦截
-                if input_mode in ("keyword", "intercept") and not current_sku_id:
+                if input_mode in ("intercept",) and not current_sku_id:
                     log.info("   📍 刷新页面拦截skuId...")
                     if gui: gui.update_status("刷新拦截skuId...", "cart")
                     
@@ -467,6 +474,19 @@ def _run_playwright_thread(result_queue):
                             log.warning("   ⚠️ HTTP 500，继续下一次...")
                         else:
                             log.warning(f"   ⚠️ 加购失败: {error_code}")
+                    else:
+                        # 没有skuId无法API加购
+                        # 刷新拦截模式：尝试再次拦截
+                        if interceptor:
+                            new_sku = interceptor.get_sku_id()
+                            if new_sku:
+                                current_sku_id = new_sku
+                                log.info(f"   🎯 延迟拦截到skuId: {current_sku_id}")
+                                continue
+                        # SKU直购模式没填skuId → 跳出轮询走DOM
+                        log.warning("   ⚠️ 无skuId，无法API加购，等待DOM兜底...")
+                        if time.time() - server_offset >= target:
+                            break  # 已过T-0，提前退出走DOM
                     
                     # 0.5秒间隔
                     time.sleep(0.5)

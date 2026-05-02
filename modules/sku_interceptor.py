@@ -132,8 +132,10 @@ class SKUInterceptor:
         
         # 提取商品信息
         name = resource.get('name', '')
-        sku_id = resource.get('skuId', '')
-        in_stock = resource.get('inStock', True)
+        sku_id = resource.get('skuId', '') or resource.get('id', '')
+        in_stock = resource.get('inStock', None)
+        if in_stock is None:
+            in_stock = resource.get('stockLevel', 'available') != 'none'
         
         # 跳过无skuId或不在架的商品
         if not sku_id:

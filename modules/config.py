@@ -81,6 +81,10 @@ CFG = {
     
     "UA": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
     
+    "INPUT_MODE": "intercept",
+    "SKU_ID": "",
+    "MANUAL_TIME_OFFSET": "",
+    "MANUAL_ONLY": False,
     "COOKIE_FILE": "./scautobuy/rsi_cookies.json",
     "LOG_FILE": "./scautobuy/rsi_buy.log",
     "SCREENSHOT_DIR": "./scautobuy/screenshots",
