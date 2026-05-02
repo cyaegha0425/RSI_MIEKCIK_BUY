@@ -151,7 +151,7 @@ class SKUInterceptor:
             return
         
         self._products.append(product_info)
-        log.info(f"   [拦截] {name}: skuId={skuId}, inStock={in_stock}")
+        log.info(f"   [拦截] {name}: skuId={sku_id}, inStock={in_stock}")
         
         # 检查是否匹配关键词
         if self._is_match(name):

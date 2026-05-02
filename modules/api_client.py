@@ -319,7 +319,7 @@ class RSIClient:
                 log.warning(f"   ⚠️ 加购错误: {errors}")
                 # 解析错误类型
                 error_str = str(errors)
-                if 'out_of_stock' in error_str.lower() or 'OutOfStock' in error_str:
+                if 'TyOutOfStockException' in error_str or 'out of stock' in error_str.lower() or 'OutOfStock' in error_str:
                     return (False, "OutOfStock")
                 elif '429' in error_str:
                     return (False, "HTTP429")
@@ -359,7 +359,7 @@ class RSIClient:
                 return (False, "HTTP429")
             elif '500' in error_str or 'Internal Server Error' in error_str:
                 return (False, "HTTP500")
-            elif 'out_of_stock' in error_str.lower():
+            elif 'TyOutOfStockException' in error_str or 'out of stock' in error_str.lower():
                 return (False, "OutOfStock")
             
             return (False, "Other")
