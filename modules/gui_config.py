@@ -429,6 +429,19 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
         scan_status_var.set("准备启动浏览器...")
         dialog.update()
         
+        def _gui_update(status_text=None, btn_state=None, btn_text=None, do_refresh=False):
+            """线程安全地更新GUI（必须在主线程执行）"""
+            try:
+                if status_text is not None:
+                    scan_status_var.set(status_text)
+                if btn_state is not None:
+                    scan_btn.config(state=btn_state, text=btn_text or scan_btn.cget('text'))
+                if do_refresh:
+                    refresh_list()
+                dialog.update()
+            except:
+                pass
+
         def do_scan():
             pw = None
             try:
@@ -437,19 +450,17 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
                 from playwright.sync_api import sync_playwright
                 
                 # 复用browser模块（杀Edge→启动CDP→5次重试）
-                scan_status_var.set("启动浏览器...")
-                dialog.update()
+                dialog.after_idle(_gui_update, "启动浏览器...")
                 pw = sync_playwright().start()
                 ctx = browser_mod.create_browser(pw)
                 if not ctx:
-                    scan_status_var.set("❌ 浏览器启动失败")
+                    dialog.after_idle(_gui_update, "❌ 浏览器启动失败")
                     return
                 
                 page = ctx.pages[0] if ctx.pages else ctx.new_page()
                 
                 # 加载cookies（复用登录态）
-                scan_status_var.set("加载登录态...")
-                dialog.update()
+                dialog.after_idle(_gui_update, "加载登录态...")
                 browser_mod.login(ctx)
                 page = ctx.pages[0] if ctx.pages else ctx.new_page()
                 
@@ -457,22 +468,19 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
                 client = RSIClient(page)
                 
                 def on_progress(pg, total):
-                    scan_status_var.set(f"扫描中: 第{pg}页, 已发现{total}个SKU")
-                    dialog.update()
+                    dialog.after_idle(_gui_update, f"扫描中: 第{pg}页, 已发现{total}个SKU")
                 
-                scan_status_var.set("正在扫描RSI商店...")
-                dialog.update()
+                dialog.after_idle(_gui_update, "正在扫描RSI商店...")
                 products = client.scan_all_skus(progress_callback=on_progress)
                 if products:
                     added = merge_bookmarks(products)
-                    scan_status_var.set(f"✅ 扫描完成: 发现{len(products)}个, 新增{added}个")
-                    refresh_list()
+                    dialog.after_idle(_gui_update, f"✅ 扫描完成: 发现{len(products)}个, 新增{added}个", do_refresh=True)
                 else:
-                    scan_status_var.set("⚠️ 未扫描到SKU，请确保已登录RSI")
+                    dialog.after_idle(_gui_update, "⚠️ 未扫描到SKU，请确保已登录RSI")
             except Exception as e:
-                scan_status_var.set(f"❌ 扫描失败: {str(e)[:60]}")
+                dialog.after_idle(_gui_update, f"❌ 扫描失败: {str(e)[:60]}")
             finally:
-                scan_btn.config(state='normal', text="🔍 扫描全量SKU")
+                dialog.after_idle(_gui_update, btn_state='normal', btn_text="🔍 扫描全量SKU")
         
         import threading
         t = threading.Thread(target=do_scan, daemon=True)
