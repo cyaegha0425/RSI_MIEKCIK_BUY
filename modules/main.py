@@ -448,9 +448,9 @@ def _run_playwright_thread(result_queue):
                         time.sleep(0.01)
                     
                     log.info(f"   ⏰ T-0 到达，刷新拦截模式！")
-                    if gui: gui.update_status("T-0！刷新拦截skuId...", "cart")
+                    if gui: gui.update_status("T-0！刷新页面...", "cart")
                     
-                    # 刷新页面拦截skuId
+                    # 1. 刷新页面
                     ts = time.time()
                     try:
                         page.reload(wait_until="domcontentloaded", timeout=10000)
@@ -464,51 +464,66 @@ def _run_playwright_thread(result_queue):
                     if interceptor:
                         interceptor.reset_start_time()
                     
-                    # 给拦截器一点时间收集数据
-                    time.sleep(1.5)
-                    
-                    # 检查拦截结果
-                    current_sku_id = interceptor.get_sku_id()
-                    if current_sku_id:
-                        log.info(f"   🎯 拦截到skuId: {current_sku_id}，立刻API加购！")
-                        if gui: gui.update_status(f"拦截到skuId，API加购...", "cart")
+                    # 2. 轮询等卡片DOM渲染(最多5秒)
+                    current_sku_id = None
+                    for fiber_attempt in range(10):
+                        if gui and gui.is_cancel_clicked():
+                            log.info("⚠️ 用户取消抢购")
+                            _cancelled = True
+                            break
                         
-                        # 拿到skuId立刻API加购
+                        # 先从卡片fiber提取skuId
+                        current_sku_id = client.get_sku_id_from_cards(keywords, CFG.get("EXCLUDE_KEYWORDS", ""))
+                        if current_sku_id:
+                            break
+                        
+                        # fiber没拿到，也检查拦截器（listing可能已到）
+                        if interceptor:
+                            interceptor_sku = interceptor.get_sku_id()
+                            if interceptor_sku:
+                                current_sku_id = interceptor_sku
+                                log.info(f"   🎯 拦截器补充拿到skuId: {current_sku_id}")
+                                break
+                        
+                        time.sleep(0.5)
+                    
+                    # 3. 拿到skuId → API加购 → 付款
+                    if current_sku_id:
+                        log.info(f"   🎯 skuId: {current_sku_id}，API加购！")
+                        if gui: gui.update_status(f"skuId={current_sku_id}，API加购...", "cart")
+                        
+                        # 保存skuId到config供下次SKU ID模式使用
+                        CFG["LAST_SKU_ID"] = current_sku_id
+                        log.info(f"   💾 已保存skuId={current_sku_id}")
+                        
                         success, error_code = client.api_add_to_cart(current_sku_id)
                         if success:
                             log.info("   ✅ API加购成功!")
                             cart_success = True
                         else:
-                            log.warning(f"   ⚠️ 首次加购失败: {error_code}，继续轮询...")
-                    else:
-                        products = interceptor.get_all_products()
-                        if products:
-                            log.info("   📦 拦截到的商品:")
-                            for p in products[:5]:
-                                log.info(f"      - {p['name']}: {p['skuId']} (inStock={p['inStock']})")
-                        else:
-                            log.warning("   ⚠️ 未拦截到任何商品信息")
+                            log.warning(f"   ⚠️ API加购失败: {error_code}")
                     
-                    # 首次加购失败或没拿到skuId，继续轮询到T+5
-                    if not cart_success:
+                    # 4. API加购失败，继续轮询到T+5
+                    if not _cancelled and not cart_success:
+                        # 如果还没skuId，继续从拦截器/卡片获取
                         while time.time() - server_offset < target + 5:
                             if gui and gui.is_cancel_clicked():
                                 log.info("⚠️ 用户取消抢购")
                                 _cancelled = True
                                 break
                             
-                            # 尝试再次拦截
-                            if not current_sku_id and interceptor:
-                                new_sku = interceptor.get_sku_id()
-                                if new_sku:
-                                    current_sku_id = new_sku
-                                    log.info(f"   🎯 延迟拦截到skuId: {current_sku_id}")
+                            if not current_sku_id:
+                                # 优先从卡片fiber拿
+                                current_sku_id = client.get_sku_id_from_cards(keywords, CFG.get("EXCLUDE_KEYWORDS", ""))
+                                if not current_sku_id and interceptor:
+                                    current_sku_id = interceptor.get_sku_id()
                             
                             if current_sku_id:
                                 success, error_code = client.api_add_to_cart(current_sku_id)
                                 if success:
                                     log.info("   ✅ API加购成功!")
                                     cart_success = True
+                                    CFG["LAST_SKU_ID"] = current_sku_id
                                     break
                                 if error_code == "HTTP429":
                                     log.warning("   ⚠️ HTTP 429 (限流)，sleep 3秒...")
@@ -524,8 +539,13 @@ def _run_playwright_thread(result_queue):
                     log.warning("   ⚠️ API加购失败，回退DOM加购...")
                     if gui: gui.update_status("回退DOM加购...", "cart")
                     
-                    for refresh_attempt in range(2):
-                        if refresh_attempt == 0:
+                    # 先扫描当前页面（卡片可能已经渲染好了，不需要reload）
+                    cart_success = client.add_to_cart_via_page()
+                    
+                    if not cart_success:
+                        # 当前页面没加购成功，再reload
+                        for refresh_attempt in range(2):
+                            log.info(f"   📍 第{refresh_attempt+1}次DOM刷新...")
                             ts = time.time()
                             try:
                                 page.reload(wait_until="domcontentloaded", timeout=10000)
@@ -533,22 +553,19 @@ def _run_playwright_thread(result_queue):
                                 log.warning(f"   ⚠️ 刷新异常: {e}")
                                 page.goto(CFG["BROWSE_URL_PREFIX"] + keywords, wait_until="domcontentloaded", timeout=15000)
                             log.info(f"   ⚡ DOM刷新: {(time.time()-ts)*1000:.0f}ms")
-                        else:
-                            log.info("   📍 第2次DOM刷新...")
-                            try:
-                                page.reload(wait_until="domcontentloaded", timeout=10000)
-                            except:
-                                page.goto(CFG["BROWSE_URL_PREFIX"] + keywords, wait_until="domcontentloaded", timeout=15000)
-                        
-                        # 轮询DOM
-                        for poll_attempt in range(8):
-                            cart_success = client.add_to_cart_via_page()
-                            if cart_success:
+                            
+                            # 轮询DOM
+                            for poll_attempt in range(8):
+                                if gui and gui.is_cancel_clicked():
+                                    _cancelled = True
+                                    break
+                                cart_success = client.add_to_cart_via_page()
+                                if cart_success:
+                                    break
+                                time.sleep(0.5)
+                            
+                            if cart_success or _cancelled:
                                 break
-                            time.sleep(0.5)
-                        
-                        if cart_success:
-                            break
                 
                 # 记录T-0时间
                 now = datetime.now().strftime("%H:%M:%S.%f")[:-3]

@@ -579,6 +579,88 @@ class RSIClient:
 
     
     
+
+    def get_sku_id_from_cards(self, keywords: str = "", exclude_keywords: str = "") -> str:
+        """从卡片DOM的React fiber中提取skuId
+        
+        遍历.c-skuCard卡片, 通过React fiber的memoizedProps.item.id获取skuId。
+        可选按关键词过滤。
+        
+        Returns:
+            skuId字符串, 未找到返回None
+        """
+        try:
+            kw_list = [k.strip().lower() for k in keywords.split() if k.strip()] if keywords else []
+            excl_list = [k.strip().lower() for k in exclude_keywords.split(',') if k.strip()] if exclude_keywords else []
+            
+            result = self.page.evaluate("""
+                (kwList, exclList) => {
+                    const cards = document.querySelectorAll('.c-skuCard');
+                    if (cards.length === 0) return { found: false, error: 'no cards' };
+                    
+                    for (const card of cards) {
+                        // 获取标题
+                        const titleEl = card.querySelector('.c-skuCard__title, .c-skuCard__name, [class*="title"]');
+                        const title = titleEl ? titleEl.innerText.trim() : '';
+                        const titleLower = title.toLowerCase();
+                        
+                        // 排除关键词
+                        const isExcluded = exclList.some(kw => titleLower.includes(kw));
+                        if (isExcluded) continue;
+                        
+                        // 关键词匹配
+                        if (kwList.length > 0) {
+                            const matched = kwList.some(kw => titleLower.includes(kw));
+                            if (!matched) continue;
+                        }
+                        
+                        // 检查Warbond
+                        const tags = [...card.querySelectorAll('.c-skuCard__tag')].map(t => t.innerText.trim());
+                        const hasWarbond = tags.some(t => t.toUpperCase().includes('WARBOND'));
+                        if (hasWarbond) continue;
+                        
+                        // 检查库存
+                        const btn = card.querySelector('.a-skuButton');
+                        const btnText = btn ? btn.innerText.trim() : '';
+                        if (btnText.toUpperCase().includes('OUT OF STOCK')) continue;
+                        
+                        // 从React fiber提取item.id (skuId)
+                        for (const key of Object.keys(card)) {
+                            if (!key.startsWith('__reactFiber')) continue;
+                            try {
+                                let fiber = card[key];
+                                // 沿return链向上搜索, 最多10层
+                                for (let i = 0; i < 10; i++) {
+                                    if (!fiber) break;
+                                    // 检查memoizedProps.item.id
+                                    if (fiber.memoizedProps && fiber.memoizedProps.item && fiber.memoizedProps.item.id) {
+                                        return { found: true, skuId: String(fiber.memoizedProps.item.id), title: title };
+                                    }
+                                    // 检查pendingProps.item.id
+                                    if (fiber.pendingProps && fiber.pendingProps.item && fiber.pendingProps.item.id) {
+                                        return { found: true, skuId: String(fiber.pendingProps.item.id), title: title };
+                                    }
+                                    fiber = fiber.return;
+                                }
+                            } catch(e) {}
+                        }
+                    }
+                    return { found: false, error: 'no skuId in fiber' };
+                }
+            """, kw_list, excl_list)
+            
+            if result and result.get('found'):
+                sku_id = result['skuId']
+                log.info(f"   🎯 [Fiber] 从卡片提取skuId: {sku_id} ({result.get('title', '')})")
+                return sku_id
+            else:
+                log.warning(f"   ⚠️ [Fiber] 未从卡片提取到skuId: {result.get('error', 'unknown')}")
+                return None
+                
+        except Exception as e:
+            log.warning(f"   ⚠️ [Fiber] 提取skuId异常: {e}")
+            return None
+
     def add_to_cart_via_page(self) -> bool:
         """列表页直接加购 - v4
         目标SKU：信用点版（无Warbond标签）且可加购（按钮不是OUT OF STOCK）
@@ -610,37 +692,6 @@ class RSIClient:
         # 检查列表页是否有卡片（开抢后刷新可能刷早了，商品还没上架）
         # 最多刷5次，每次间隔1秒
         for attempt in range(1, 6):
-            # [DEBUG] 第一次检查时，同时探测页面上所有卡片相关的class
-            if attempt == 1:
-                try:
-                    dom_probe = self.page.evaluate("""
-                        () => {
-                            const all = document.querySelectorAll('*');
-                            const classMap = {};
-                            for (const el of all) {
-                                if (!el.className || typeof el.className !== 'string') continue;
-                                for (const cls of el.className.split(' ')) {
-                                    if (!cls) continue;
-                                    const lc = cls.toLowerCase();
-                                    if (lc.includes('card') || lc.includes('sku') || lc.includes('product') || lc.includes('pledge') || lc.includes('item') || lc.includes('listing')) {
-                                        if (!classMap[cls]) classMap[cls] = 0;
-                                        classMap[cls]++;
-                                    }
-                                }
-                            }
-                            // 也检查shadow DOM
-                            const shadowHosts = document.querySelectorAll('*');
-                            let shadowCount = 0;
-                            for (const el of shadowHosts) {
-                                if (el.shadowRoot) shadowCount++;
-                            }
-                            return { classes: classMap, shadowCount, bodyLen: document.body.innerHTML.length };
-                        }
-                    """)
-                    log.info(f"   [DOM探针] class统计: {dom_probe.get('classes', {})}")
-                    log.info(f"   [DOM探针] shadowRoot数: {dom_probe.get('shadowCount', 0)}, body长度: {dom_probe.get('bodyLen', 0)}")
-                except Exception as e:
-                    log.warning(f"   [DOM探针] 失败: {e}")
             
             check_result = self.page.evaluate("""
                 () => {
@@ -734,99 +785,6 @@ class RSIClient:
         
         log.info(f"   📋 共{r.get('total', 0)}个卡片")
         
-        # [DEBUG] 探测卡片React fiber, 找skuId/id字段(深度8层)
-        try:
-            fiber_debug = self.page.evaluate("""
-                () => {
-                    const cards = document.querySelectorAll('.c-skuCard');
-                    if (cards.length === 0) return { error: 'no cards' };
-                    
-                    const results = [];
-                    for (let i = 0; i < Math.min(cards.length, 1); i++) {
-                        const card = cards[i];
-                        const titleEl = card.querySelector('.c-skuCard__title, .c-skuCard__name, [class*="title"]');
-                        const title = titleEl ? titleEl.innerText.trim() : 'Unknown';
-                        
-                        const found = {};
-                        const seen = new Set();
-                        
-                        const search = (o, depth, path) => {
-                            if (!o || typeof o !== 'object' || depth > 8 || seen.size > 500) return;
-                            try {
-                                for (const [k, v] of Object.entries(o)) {
-                                    const np = path ? path + '.' + k : k;
-                                    if (np.includes('parent') || np.includes('sibling') || np.includes('stateNode') || np.includes('_owner')) continue;
-                                    if (/(id|sku|slug|resource|productId|variantId|itemId|storeItem)/i.test(k) && typeof v !== 'object') {
-                                        found[np] = String(v).substring(0, 100);
-                                    }
-                                    if (v && typeof v === 'object') {
-                                        const oid = np.substring(0, 60);
-                                        if (!seen.has(oid)) {
-                                            seen.add(oid);
-                                            try { search(v, depth + 1, np.substring(0, 80)); } catch(e) {}
-                                        }
-                                    }
-                                }
-                            } catch(e) {}
-                        };
-                        
-                        for (const key of Object.keys(card)) {
-                            if (!key.startsWith('__react')) continue;
-                            try { search(card[key], 0, 'c.' + key.substring(0, 20)); } catch(e) {}
-                        }
-                        
-                        const btn = card.querySelector('.a-skuButton');
-                        if (btn) {
-                            for (const key of Object.keys(btn)) {
-                                if (!key.startsWith('__react')) continue;
-                                try { search(btn[key], 0, 'b.' + key.substring(0, 20)); } catch(e) {}
-                            }
-                        }
-                        
-                        const children = card.querySelectorAll('*');
-                        let cc = 0;
-                        for (const child of children) {
-                            if (cc > 15) break;
-                            for (const key of Object.keys(child)) {
-                                if (!key.startsWith('__reactProps')) continue;
-                                try {
-                                    const props = child[key];
-                                    if (props && typeof props === 'object') {
-                                        for (const [pk, pv] of Object.entries(props)) {
-                                            if (/(id|sku|slug|resource)/i.test(pk) && typeof pv !== 'object') {
-                                                found['ch.' + pk] = String(pv).substring(0, 100);
-                                            }
-                                        }
-                                    }
-                                } catch(e) {}
-                            }
-                            cc++;
-                        }
-                        
-                        for (const attr of card.attributes) {
-                            if (attr.name.startsWith('data-')) {
-                                found['attr.' + attr.name] = attr.value.substring(0, 100);
-                            }
-                        }
-                        
-                        const links = card.querySelectorAll('a[href]');
-                        links.forEach((a, idx) => { found['link' + idx] = a.href; });
-                        
-                        results.push({ title, found, totalFields: Object.keys(found).length });
-                    }
-                    return results;
-                }
-            """)
-            
-            if isinstance(fiber_debug, list):
-                for item in fiber_debug:
-                    log.info(f"   [Fiber探针] 卡片: {item.get('title', '?')}, 找到{item.get('totalFields', 0)}个字段")
-                    for k, v in item.get('found', {}).items():
-                        log.info(f"      {k} = {v}")
-            else:
-                log.info(f"   [Fiber探针] {fiber_debug}")
-        except Exception as e:
-            log.warning(f"   [Fiber探针] 失败: {e}")
         for d in r.get('info', []):
             if d.get('status') == '排除':
                 log.info(f"      [{d['title'][:30]}] 🚫 排除")

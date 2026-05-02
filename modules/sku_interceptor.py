@@ -71,8 +71,8 @@ class SKUInterceptor:
                 if '/graphql' not in url:
                     return
                 
-                # DEBUG: 记录所有graphql响应
-                log.info(f"   [拦截器DEBUG] 收到GraphQL响应: status={response.status}, url={url[:80]}")
+                # 记录GraphQL响应
+                log.debug(f"   [拦截器] 收到GraphQL响应: status={response.status}")
                 
                 # 只处理成功的响应
                 if response.status != 200:
@@ -81,15 +81,15 @@ class SKUInterceptor:
                 # 异步获取响应体（不会阻塞）
                 try:
                     body = response.text()
-                    # DEBUG: 记录响应体前200字符
-                    log.info(f"   [拦截器DEBUG] body前200字: {body[:200]}")
+                    # 响应体前200字符(debug用)
+                    log.debug(f"   [拦截器] body: {body[:200]}")
                 except:
                     return
                 
                 self._parse_response(body)
                 
             except Exception as e:
-                log.warning(f"   [拦截器DEBUG] 异常: {e}")
+                log.warning(f"   [拦截器] 异常: {e}")
         
         # 注册拦截器
         self.page.on('response', handle_response)
