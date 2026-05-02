@@ -34,7 +34,7 @@ class SKUInterceptor:
             exclude_keywords: 排除关键词（英文逗号分隔）
         """
         self.page = page
-        self._start_time = time.time()  # 计时用
+        self._start_time = None  # 计时用, 刷新时设置
         self.keywords = [k.strip().lower() for k in keywords.split() if k.strip()]
         self.exclude_keywords = [k.strip().lower() for k in exclude_keywords.split(',') if k.strip()]
         
@@ -42,6 +42,11 @@ class SKUInterceptor:
         self._products = []
         self._sku_id = None
         self._intercepted = False
+    
+    def reset_start_time(self):
+        """Reset timing start point, call on page refresh"""
+        self._start_time = time.time()
+        log.info("   [计时] 计时起点已重置")
         
         # 编译正则表达式
         self._keywords_pattern = None
@@ -147,11 +152,11 @@ class SKUInterceptor:
         if not sku_id:
             return
         
-        # 计时：首次拦截到商品的时间
-        elapsed = time.time() - self._start_time
-        if elapsed > 0:
+        # 计时：首次拦截到商品的时间(从刷新开始算)
+        if self._start_time and self._start_time > 0:
+            elapsed = time.time() - self._start_time
             log.info(f"   [计时] 首次商品拦截: +{elapsed:.1f}秒")
-            self._start_time = -999  # 只记录一次
+            self._start_time = -1  # 只记录一次
         
         # 记录商品信息
         product_info = {

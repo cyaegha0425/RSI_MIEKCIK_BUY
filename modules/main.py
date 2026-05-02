@@ -460,6 +460,10 @@ def _run_playwright_thread(result_queue):
                     
                     log.info(f"   ⚡ 页面刷新: {(time.time()-ts)*1000:.0f}ms")
                     
+                    # 重置拦截器计时起点
+                    if interceptor:
+                        interceptor.reset_start_time()
+                    
                     # 给拦截器一点时间收集数据
                     time.sleep(1.5)
                     

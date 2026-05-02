@@ -701,6 +701,85 @@ class RSIClient:
         """)
         
         log.info(f"   📋 共{r.get('total', 0)}个卡片")
+        
+        # [DEBUG] 探测卡片React fiber，找skuId/id字段
+        try:
+            fiber_debug = self.page.evaluate("""
+                () => {
+                    const cards = document.querySelectorAll('.c-skuCard');
+                    if (cards.length === 0) return { error: 'no cards' };
+                    
+                    const results = [];
+                    for (let i = 0; i < Math.min(cards.length, 2); i++) {
+                        const card = cards[i];
+                        const titleEl = card.querySelector('.c-skuCard__title, .c-skuCard__name, [class*="title"]');
+                        const title = titleEl ? titleEl.innerText.trim() : 'Unknown';
+                        
+                        const found = {};
+                        
+                        // 方法1: 遍历React fiber找含id/sku的props
+                        for (const key of Object.keys(card)) {
+                            if (!key.startsWith('__react')) continue;
+                            try {
+                                let obj = card[key];
+                                const search = (o, depth, path) => {
+                                    if (!o || typeof o !== 'object' || depth > 3) return;
+                                    for (const [k, v] of Object.entries(o)) {
+                                        const np = path ? path + '.' + k : k;
+                                        if (typeof k === 'string' && (k === 'id' || k === 'skuId' || k === 'sku' || k === 'productId' || k === 'slug' || k === 'resourceId')) {
+                                            found[np] = String(v).substring(0, 100);
+                                        }
+                                        if (v && typeof v === 'object' && !np.includes('parent')) {
+                                            try { search(v, depth + 1, np); } catch(e) {}
+                                        }
+                                    }
+                                };
+                                search(obj, 0, key.substring(0, 15));
+                            } catch(e) {}
+                        }
+                        
+                        // 方法2: 检查卡片所有data-*属性
+                        for (const attr of card.attributes) {
+                            if (attr.name.startsWith('data-')) {
+                                found['attr.' + attr.name] = attr.value.substring(0, 100);
+                            }
+                        }
+                        
+                        // 方法3: 检查按钮的React fiber
+                        const btn = card.querySelector('.a-skuButton');
+                        if (btn) {
+                            for (const key of Object.keys(btn)) {
+                                if (!key.startsWith('__reactProps')) continue;
+                                try {
+                                    const props = btn[key];
+                                    if (props && typeof props === 'object') {
+                                        found['btn.' + key.substring(0, 20)] = JSON.stringify(props).substring(0, 300);
+                                    }
+                                } catch(e) {}
+                            }
+                        }
+                        
+                        // 方法4: 检查卡片内所有a[href]链接
+                        const links = card.querySelectorAll('a[href]');
+                        links.forEach((a, idx) => {
+                            found['link' + idx] = a.href;
+                        });
+                        
+                        results.push({ title, found });
+                    }
+                    return results;
+                }
+            """)
+            
+            if isinstance(fiber_debug, list):
+                for item in fiber_debug:
+                    log.info(f"   [Fiber探针] 卡片: {item.get('title', '?')}")
+                    for k, v in item.get('found', {}).items():
+                        log.info(f"      {k} = {v}")
+            else:
+                log.info(f"   [Fiber探针] {fiber_debug}")
+        except Exception as e:
+            log.warning(f"   [Fiber探针] 失败: {e}")
         for d in r.get('info', []):
             if d.get('status') == '排除':
                 log.info(f"      [{d['title'][:30]}] 🚫 排除")
