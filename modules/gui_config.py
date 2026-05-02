@@ -12,6 +12,7 @@ import threading
 from datetime import datetime
 
 from . import config
+from .latency_test import show_latency_dialog
 
 # 导入config中的常量
 CFG = config.CFG
@@ -595,6 +596,12 @@ def _show_config_dialog():
                               fg="white", bg="#7B8FB7", relief='flat',
                               padx=18, pady=5, cursor='hand2')
     advanced_btn.pack(side='left')
+    
+    latency_btn = tk.Button(settings_row, text="延迟测试", command=lambda: show_latency_dialog(root),
+                              font=("Microsoft YaHei UI", 11),
+                              fg="white", bg="#7B8FB7", relief='flat',
+                              padx=18, pady=5, cursor='hand2')
+    latency_btn.pack(side='left', padx=10)
     
     # ===== 按钮行 =====
     start_btn = tk.Button(root, text="开始抢购", command=lambda: None,
