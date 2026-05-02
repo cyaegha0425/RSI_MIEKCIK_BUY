@@ -1396,10 +1396,14 @@ class RSIClient:
         return False
 
     def scan_all_skus(self, category: str = "extras/standalone-ships", progress_callback=None) -> list:
-        """扫描RSI商店全量SKU（从SSR页面HTML源码提取，URL分页）
+        """扫描RSI商店全量SKU（用keywords参数触发SPA+GraphQL，拦截器捕获）
         
-        RSI商店浏览页是纯SSR，不走GraphQL API，reload也不发GraphQL
-        商品数据直接嵌在HTML里，从页面源码正则提取skuId
+        关键发现：RSI商店浏览页有两种模式：
+        - 不带keywords参数：SSR，HTML直出，不走GraphQL
+        - 带keywords参数：SPA，前端JS发GraphQL请求拉数据
+        
+        所以扫描URL加上 &keywords= 即可触发GraphQL模式
+        拦截器就能像抢船一样捕获skuId
         
         Args:
             category: 商店分类路径
@@ -1407,7 +1411,7 @@ class RSIClient:
         Returns:
             list of dict: [{name, sku_id, price, in_stock}, ...]
         """
-        import re as _re
+        from .sku_interceptor import SKUInterceptor
         
         all_products = []
         seen_sku_ids = set()
@@ -1415,119 +1419,57 @@ class RSIClient:
         try:
             log.info("📍 [SKU扫描] 开始扫描: " + category)
             
+            # 关键：加 &keywords= 触发SPA+GraphQL模式
             base_url = f"https://robertsspaceindustries.com/en/store/pledge/browse/{category}"
+            
+            # 先注册拦截器（必须在导航之前）
+            interceptor = SKUInterceptor(self.page, keywords="", exclude_keywords="")
+            interceptor._register_interceptor()
             
             page_num = 1
             max_pages = 20
             empty_pages = 0
             
             while page_num <= max_pages:
-                page_url = f"{base_url}?page={page_num}&sortField=price&sortDir=desc"
+                # 加 &keywords= 触发SPA模式！
+                page_url = f"{base_url}?page={page_num}&sortField=price&sortDir=desc&keywords="
                 log.info(f"   📄 扫描第{page_num}页...")
                 
+                # 清空拦截器缓冲
+                interceptor._products.clear()
+                interceptor._intercepted = False
+                
+                # 导航（带keywords=触发SPA+GraphQL）
                 self.page.goto(page_url, wait_until="domcontentloaded", timeout=30000)
-                time.sleep(3)
                 
-                # 从页面HTML源码提取skuId
-                # RSI SSR页面中商品数据格式多样，多种正则尝试
-                html = self.page.content()
+                # 等待GraphQL响应
+                for wait_i in range(20):
+                    time.sleep(0.5)
+                    if interceptor.get_all_products():
+                        break
                 
-                page_products = []
-                seen_on_page = set()
-                
-                # 正则1: "skuId":12345 或 "skuId":"12345"
-                for m in _re.finditer(r'"skuId"\s*:\s*"?([0-9]{3,})"?', html):
-                    sku = m.group(1)
-                    if sku not in seen_on_page:
-                        seen_on_page.add(sku)
-                        page_products.append({'skuId': sku, 'source': 'regex_skuId'})
-                
-                # 正则2: /pledge/ships/xxxx/12345 这种URL中的数字
-                if not page_products:
-                    for m in _re.finditer(r'/pledge/[^/]+/[^/]+/(\d{4,})', html):
-                        sku = m.group(1)
-                        if sku not in seen_on_page:
-                            seen_on_page.add(sku)
-                            page_products.append({'skuId': sku, 'source': 'regex_url'})
-                
-                # 正则3: data-sku-id="12345" 或 data-sku="12345"
-                if not page_products:
-                    for m in _re.finditer(r'data-sku-?id\s*=\s*"?(\d{3,})"?', html):
-                        sku = m.group(1)
-                        if sku not in seen_on_page:
-                            seen_on_page.add(sku)
-                            page_products.append({'skuId': sku, 'source': 'regex_data'})
-                
-                # DOM方式: 从页面JS环境提取
-                if not page_products:
-                    page_products = self.page.evaluate("""() => {
-                        const results = [];
-                        const seen = new Set();
-                        
-                        // 尝试从嵌入的script标签中提取
-                        const scripts = document.querySelectorAll('script');
-                        for (const s of scripts) {
-                            const text = s.textContent || '';
-                            const matches = [...text.matchAll(/"skuId"\s*:\s*"?([0-9]{3,})"?/g)];
-                            for (const m of matches) {
-                                if (!seen.has(m[1])) { seen.add(m[1]); results.push({skuId: m[1], source: 'script'}); }
-                            }
-                        }
-                        
-                        // 从DOM卡片提取
-                        const cards = document.querySelectorAll('[class*="product"], [class*="listing"], [class*="pledge"]');
-                        for (const card of cards) {
-                            const links = card.querySelectorAll('a[href*="/pledge/"]');
-                            for (const link of links) {
-                                const href = link.getAttribute('href') || '';
-                                const m = href.match(/(\d{4,})$/);
-                                if (m && !seen.has(m[1])) {
-                                    seen.add(m[1]);
-                                    const name = card.querySelector('[class*="name"], [class*="title"], h3, h4')?.textContent?.trim() || '';
-                                    const priceText = card.querySelector('[class*="price"]')?.textContent?.trim() || '';
-                                    const pm = priceText.match(/\$?([\d,.]+)/);
-                                    results.push({skuId: m[1], name, price: pm ? parseFloat(pm[1].replace(',','')) : 0, source: 'dom'});
-                                }
-                            }
-                        }
-                        
-                        return results;
-                    }""")
-                
-                # 去重加入结果
+                # 收集拦截到的商品
+                products = interceptor.get_all_products()
                 new_count = 0
-                for p in page_products:
-                    sku_id = str(p.get('skuId', ''))
-                    if not sku_id or sku_id in seen_sku_ids:
-                        continue
-                    seen_sku_ids.add(sku_id)
-                    all_products.append({
-                        'name': p.get('name', ''),
-                        'sku_id': sku_id,
-                        'price': p.get('price', 0),
-                        'in_stock': p.get('in_stock', True)
-                    })
-                    new_count += 1
+                for p in products:
+                    if p['skuId'] not in seen_sku_ids:
+                        seen_sku_ids.add(p['skuId'])
+                        all_products.append({
+                            'name': p.get('name', ''),
+                            'sku_id': p['skuId'],
+                            'price': p.get('price', 0),
+                            'in_stock': p.get('inStock', False)
+                        })
+                        new_count += 1
                 
-                total_on_page = len(page_products)
-                log.info(f"   📄 第{page_num}页: 提取{total_on_page}个, 新增{new_count}个, 累计{len(all_products)}个")
-                
-                # 第1页debug: dump HTML前500字和找到的skuId位置
-                if total_on_page == 0 and page_num == 1:
-                    # 看看HTML里到底有没有数字ID
-                    all_ids = _re.findall(r'"id"\s*:\s*"?(\d{4,})"?', html)
-                    log.warning(f"   [DEBUG] HTML长度={len(html)}, skuId匹配=0, 但id匹配到{len(all_ids)}个: {all_ids[:10]}")
-                    # 看看有没有商品相关的JSON结构
-                    json_blocks = _re.findall(r'"name"\s*:\s*"([^"]{5,50})"', html)
-                    log.warning(f"   [DEBUG] name字段匹配: {json_blocks[:10]}")
-                
+                log.info(f"   📄 第{page_num}页: 拦截{len(products)}个, 新增{new_count}个, 累计{len(all_products)}个")
                 if progress_callback:
                     try:
                         progress_callback(page_num, len(all_products))
                     except:
                         pass
                 
-                if total_on_page == 0:
+                if len(products) == 0:
                     empty_pages += 1
                     if empty_pages >= 2:
                         log.info(f"   ✅ 连续{empty_pages}页无商品，扫描完成")
