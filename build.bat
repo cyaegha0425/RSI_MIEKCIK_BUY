@@ -1,9 +1,9 @@
 @echo off
 chcp 65001 >nul
-REM RSI-AB Build Script
+REM RSI_MIEKCIK_BUY Build Script
 
 echo ================================================
-echo   RSI-AB Build Script
+echo   RSI_MIEKCIK_BUY Build Script
 echo   MieMie Kick! V3.0.0
 echo ================================================
 echo.
@@ -43,13 +43,15 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Copy images and guide to dist
+REM Copy resources to dist
 echo.
 echo [3/3] Copying resources...
 if not exist "dist\images" mkdir "dist\images"
 copy /y "images\*.png" "dist\images\" >nul
 copy /y "icon.ico" "dist\" >nul
-copy /y "RSI_MIEBUY_Guide.txt" "dist\" >nul
+copy /y "GUIDE.txt" "dist\" >nul
+copy /y "README.md" "dist\" >nul
+copy /y "sku_bookmarks.example.json" "dist\" >nul
 echo       Done.
 echo.
 
@@ -58,6 +60,7 @@ if exist "dist\RSI_MIEKCIK_BUY.exe" (
     echo   Build Complete!
     echo   Output: dist\RSI_MIEKCIK_BUY.exe
     echo   Images: dist\images\
+    echo   Guide:  dist\GUIDE.txt
     echo ================================================
 ) else (
     echo [ERROR] EXE not found!
