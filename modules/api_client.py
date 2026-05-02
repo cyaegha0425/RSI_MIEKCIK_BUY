@@ -1438,8 +1438,12 @@ class RSIClient:
                     if interceptor.get_all_products():
                         break
                 
-                # 收集当前页拦截到的商品
+                # DEBUG: 没拦截到商品时dump响应摘要
                 products = interceptor.get_all_products()
+                if not products and page_num == 1:
+                    log.warning(f"   🔍 [DEBUG] 第1页拦截到0个商品, 原始响应数={len(interceptor._raw_responses)}")
+                    for i, (url, op, body_preview) in enumerate(interceptor._raw_responses[:5]):
+                        log.warning(f"   🔍 [DEBUG] 响应{i}: op={op}, body前200字={body_preview[:200]}")
                 new_count = 0
                 for p in products:
                     if p['skuId'] not in seen_sku_ids:

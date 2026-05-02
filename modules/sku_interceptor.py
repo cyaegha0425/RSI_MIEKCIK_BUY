@@ -42,6 +42,7 @@ class SKUInterceptor:
         self._products = []
         self._sku_id = None
         self._intercepted = False
+        self._raw_responses = []  # DEBUG: 原始GraphQL响应摘要
     
     def reset_start_time(self):
         """Reset timing start point, call on page refresh"""
@@ -99,6 +100,14 @@ class SKUInterceptor:
         """解析GraphQL响应体"""
         try:
             data = json.loads(body)
+            
+            # DEBUG: 记录原始响应摘要
+            op_name = ""
+            if isinstance(data, list) and data:
+                op_name = data[0].get("operationName", "") if isinstance(data[0], dict) else ""
+            elif isinstance(data, dict):
+                op_name = data.get("operationName", "")
+            self._raw_responses.append((op_name, op_name, body[:500]))
             
             # 遍历响应查找listing数据
             self._extract_listings(data)
