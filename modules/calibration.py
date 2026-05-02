@@ -60,7 +60,7 @@ class CalibrationScheduler:
             self.calib_points.reverse()
         
         # 固定校准时间点：T-60, T-40, T-20, T-5
-        for fixed_t in [60, 40, 20, 5]:
+        for fixed_t in [60, 40, 20]:
             if total_remaining >= fixed_t:
                 calib_id += 1
                 self.calib_points.append((self.target - fixed_t, calib_id))
