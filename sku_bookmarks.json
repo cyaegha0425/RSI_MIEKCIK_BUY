@@ -1,5 +1,107 @@
 [
-  {"name": "PTV Buggy", "sku_id": "10898", "price": 15},
-  {"name": "Pioneer Warbond", "sku_id": "18040", "price": 0},
-  {"name": "Pioneer Standalone", "sku_id": "18039", "price": 0}
+  {
+    "name": "PTV Buggy",
+    "sku_id": "10898",
+    "price": 15
+  },
+  {
+    "name": "ATLS",
+    "sku_id": "17381",
+    "price": 40
+  },
+  {
+    "name": "ATLS GEO",
+    "sku_id": "18024",
+    "price": 45
+  },
+  {
+    "name": "Arrow",
+    "sku_id": "10417",
+    "price": 75
+  },
+  {
+    "name": "Avenger Stalker",
+    "sku_id": "199",
+    "price": 60
+  },
+  {
+    "name": "Avenger Titan",
+    "sku_id": "16030",
+    "price": 60
+  },
+  {
+    "name": "Ballista",
+    "sku_id": "11916",
+    "price": 140
+  },
+  {
+    "name": "C8R Pisces",
+    "sku_id": "15517",
+    "price": 65
+  },
+  {
+    "name": "C8X Pisces Expedition",
+    "sku_id": "13285",
+    "price": 45
+  },
+  {
+    "name": "CSV-SM",
+    "sku_id": "17584",
+    "price": 45
+  },
+  {
+    "name": "Centurion",
+    "sku_id": "15340",
+    "price": 110
+  },
+  {
+    "name": "F7C Hornet Mk II",
+    "sku_id": "16809",
+    "price": 175
+  },
+  {
+    "name": "Gladius",
+    "sku_id": "535",
+    "price": 90
+  },
+  {
+    "name": "Gladius Valiant",
+    "sku_id": "15827",
+    "price": 110
+  },
+  {
+    "name": "Hawk",
+    "sku_id": "10830",
+    "price": 100
+  },
+  {
+    "name": "Mole",
+    "sku_id": "13293",
+    "price": 315
+  },
+  {
+    "name": "Pioneer Warbond",
+    "sku_id": "18040",
+    "price": 825
+  },
+  {
+    "name": "Pioneer Standalone",
+    "sku_id": "18039",
+    "price": 925
+  },
+  {
+    "name": "Reclaimer",
+    "sku_id": "8058",
+    "price": 400
+  },
+  {
+    "name": "Valkyrie",
+    "sku_id": "9685",
+    "price": 375
+  },
+  {
+    "name": "Vanguard Hoplite",
+    "sku_id": "16122",
+    "price": 240
+  }
 ]
