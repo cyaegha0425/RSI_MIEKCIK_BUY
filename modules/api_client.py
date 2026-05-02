@@ -594,7 +594,9 @@ class RSIClient:
             excl_list = [k.strip().lower() for k in exclude_keywords.split(',') if k.strip()] if exclude_keywords else []
             
             result = self.page.evaluate("""
-                (kwList, exclList) => {
+                (args) => {
+                    const kwList = args.kwList;
+                    const exclList = args.exclList;
                     const cards = document.querySelectorAll('.c-skuCard');
                     if (cards.length === 0) return { found: false, error: 'no cards' };
                     
@@ -647,7 +649,7 @@ class RSIClient:
                     }
                     return { found: false, error: 'no skuId in fiber' };
                 }
-            """, kw_list, excl_list)
+            """, {"kwList": kw_list, "exclList": excl_list})
             
             if result and result.get('found'):
                 sku_id = result['skuId']
