@@ -553,7 +553,13 @@ class RSIClient:
                     self.cart_total = total
                     log.info(f"   💰 使用拦截器价格: ${total}")
                 else:
-                    # 3. 从页面DOM读取价格
+                    # SKU直购模式必须手填价格
+                    from . import config as _cfg
+                    input_mode = _cfg.CFG.get("INPUT_MODE", "intercept")
+                    if input_mode == "sku":
+                        log.error("❌ SKU直购模式必须手动填写价格！")
+                        return False
+                    # 拦截模式：尝试DOM读取
                     try:
                         dom_price = self.page.evaluate("() => { const el = document.querySelector('.c-skuCard__price, .a-skuCard__price, [class*=price]'); return el ? parseFloat(el.textContent.replace(/[^0-9.]/g, '')) || 0 : 0; }")
                         if dom_price and dom_price > 0:
@@ -562,29 +568,6 @@ class RSIClient:
                             log.info(f"   💰 使用DOM价格: ${total}")
                     except:
                         pass
-                    
-                    # 4. 探价模式：用大额信用点探测实际价格
-                    if total <= 0:
-                        log.info("   🔍 探价模式：查询购物车实际价格...")
-                        try:
-                            probe_result = self.gql("AddCreditMutation", {"amount": 99999, "storeFront": "pledge"})
-                            time.sleep(0.1)
-                            totals = probe_result.get('data', {}).get('store', {}).get('cart', {}).get('totals', {})
-                            cart_total = totals.get('total', 0)
-                            credits_info = totals.get('credits', {})
-                            max_applicable = credits_info.get('maxApplicable', 0)
-                            # cart_total可能是分，max_applicable可能是元
-                            if max_applicable and max_applicable > 0:
-                                total = float(max_applicable)
-                            elif cart_total and cart_total > 0:
-                                total = float(cart_total) / 100.0 if float(cart_total) > 100 else float(cart_total)
-                            if total > 0:
-                                self.cart_total = total
-                                log.info(f"   💰 探价成功: ${total} (maxApplicable={max_applicable}, total={cart_total})")
-                                # 价格已发现，信用点已应用，跳过步骤2的重复应用
-                                skip_credit = True
-                        except Exception as e:
-                            log.warning(f"   ⚠️ 探价失败: {e}")
                     
                     if total <= 0:
                         log.error("❌ 未获取到商品价格，无法结账")
