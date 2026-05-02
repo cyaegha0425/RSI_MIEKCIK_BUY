@@ -478,7 +478,7 @@ def _show_config_dialog():
              fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR).pack(side='left', padx=(0, 5))
     
     # 输入方式变量
-    input_mode_var = tk.StringVar(value=saved_config.get("input_mode", "intercept") if saved_config else "intercept")
+    input_mode_var = tk.StringVar(value=saved_config.get("input_mode", "intercept") if saved_config and saved_config.get("input_mode") != "keyword" else "intercept")
     
     def on_input_mode_change(mode):
         """切换输入方式"""
