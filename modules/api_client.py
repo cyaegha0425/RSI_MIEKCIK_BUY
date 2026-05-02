@@ -588,6 +588,9 @@ class RSIClient:
     
     
 
+    # Fiber调试开关：True时dump fiber树结构到日志(只dump一次后自动关闭)
+    FIBER_DUMP = True
+
     def get_sku_id_from_cards(self, keywords: str = "", exclude_keywords: str = "") -> str:
         """从卡片DOM的React fiber中提取skuId
         
@@ -607,6 +610,49 @@ class RSIClient:
                     const exclList = args.exclList;
                     const cards = document.querySelectorAll('.c-skuCard');
                     if (cards.length === 0) return { found: false, error: 'no cards' };
+
+                    // FIBER_DUMP: dump第一个卡片的fiber树结构
+                    const FIBER_DUMP = args.fiberDump;
+                    if (FIBER_DUMP && cards.length > 0) {
+                        const dumpCard = cards[0];
+                        const dumpResult = [];
+                        const dumpObj = (obj, prefix, depth) => {
+                            if (!obj || typeof obj !== 'object' || depth > 3) return;
+                            const keys = Object.keys(obj).filter(k => !k.startsWith('__')).slice(0, 15);
+                            for (const k of keys) {
+                                const v = obj[k];
+                                const t = typeof v;
+                                if (t === 'function') continue;
+                                const desc = t === 'object' ? (v ? '[' + Object.keys(v).slice(0,5).join(',') + ']' : 'null') : String(v).slice(0,80);
+                                dumpResult.push(prefix + k + ' = ' + desc);
+                                if (t === 'object' && v && depth < 3) dumpObj(v, prefix + '  ', depth + 1);
+                            }
+                        };
+                        for (const key of Object.keys(dumpCard)) {
+                            if (!key.startsWith('__react')) continue;
+                            dumpResult.push('=== ' + key + ' ===');
+                            try { dumpObj(dumpCard[key], '  ', 0); } catch(e) { dumpResult.push('  ERR: ' + e.message); }
+                        }
+                        // 搜索所有含id/sku/item的属性路径
+                        const searchAll = (obj, path, depth) => {
+                            if (!obj || typeof obj !== 'object' || depth > 5) return [];
+                            const hits = [];
+                            for (const k of Object.keys(obj)) {
+                                try {
+                                    const v = obj[k];
+                                    if (k === 'id' || k === 'skuId' || k === 'sku' || k === 'resourceId') hits.push(path + '.' + k + ' = ' + String(v).slice(0,50));
+                                    if (k === 'item' && v && typeof v === 'object') { hits.push(path + '.item = {' + Object.keys(v).slice(0,10).join(',') + '}'); if (v.id) hits.push(path + '.item.id = ' + v.id); }
+                                    if (typeof v === 'object' && v) hits.push(...searchAll(v, path + '.' + k, depth + 1));
+                                } catch(e) {}
+                            }
+                            return hits;
+                        };
+                        for (const key of Object.keys(dumpCard)) {
+                            if (!key.startsWith('__react')) continue;
+                            try { const hits = searchAll(dumpCard[key], key, 0); if (hits.length > 0) { dumpResult.push('--- id/sku hits in ' + key + ' ---'); dumpResult.push(...hits.slice(0, 30)); } } catch(e) {}
+                        }
+                        return { found: false, error: 'fiber_dump', dump: dumpResult.join('\n') };
+                    }
                     
                     for (const card of cards) {
                         // 获取标题
@@ -698,12 +744,19 @@ class RSIClient:
                     }
                     return { found: false, error: 'no skuId in fiber' };
                 }
-            """, {"kwList": kw_list, "exclList": excl_list})
+            """, {"kwList": kw_list, "exclList": excl_list, "fiberDump": self.FIBER_DUMP})
             
             if result and result.get('found'):
                 sku_id = result['skuId']
                 log.info(f"   🎯 [Fiber] 从卡片提取skuId: {sku_id} ({result.get('title', '')})")
                 return sku_id
+            elif result and result.get('error') == 'fiber_dump':
+                # 输出dump结果到日志
+                dump_text = result.get('dump', '')
+                log.info(f"   🔬 [Fiber Dump] Edge fiber树结构:\n{dump_text}")
+                # dump一次后自动关闭，下次正常走fiber提取
+                self.FIBER_DUMP = False
+                return None
             else:
                 log.warning(f"   ⚠️ [Fiber] 未从卡片提取到skuId: {result.get('error', 'unknown')}")
                 return None
