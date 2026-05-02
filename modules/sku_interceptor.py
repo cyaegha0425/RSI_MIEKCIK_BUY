@@ -222,6 +222,13 @@ class SKUInterceptor:
                 return p.get('price', 0)
         return 0
     
+    def get_matched_name(self) -> str:
+        """获取匹配商品的名称"""
+        for p in self._products:
+            if p['skuId'] == self._sku_id:
+                return p.get('name', '')
+        return ''
+    
     def get_all_products(self) -> List[Dict]:
         """获取所有拦截到的商品列表"""
         return self._products.copy()

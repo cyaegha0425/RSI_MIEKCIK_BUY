@@ -500,10 +500,14 @@ def _run_playwright_thread(result_queue):
                         # 保存skuId到config供下次SKU ID模式使用
                         CFG["LAST_SKU_ID"] = current_sku_id
                         log.info(f"   💾 已保存skuId={current_sku_id}")
-                        # 自动保存到收藏夹
+                        # 自动保存到收藏夹(用拦截器的真实商品名+价格)
                         try:
                             from .sku_bookmarks import add_bookmark
-                            add_bookmark(keywords.strip() or "Unknown", current_sku_id, float(CFG.get("ITEM_PRICE", 0) or 0))
+                            bm_name = interceptor.get_matched_name() if interceptor else (keywords.strip() or "Unknown")
+                            bm_price = interceptor.get_price() if interceptor else float(CFG.get("ITEM_PRICE", 0) or 0)
+                            if not bm_price:
+                                bm_price = float(CFG.get("ITEM_PRICE", 0) or 0)
+                            add_bookmark(bm_name or "Unknown", current_sku_id, bm_price)
                         except: pass
                         
                         success, error_code = client.api_add_to_cart(current_sku_id)

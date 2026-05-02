@@ -215,6 +215,7 @@ def _show_advanced_settings_dialog(parent, current_offset, current_proxy):
 def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mode_change):
     """显示SKU收藏夹弹窗，支持搜索和选择"""
     import tkinter as tk
+    from tkinter import messagebox
     from .sku_bookmarks import load_bookmarks, remove_bookmark
     
     dialog = tk.Toplevel(parent)
@@ -318,8 +319,10 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
                       fg="white", bg="#6A8CBA", relief='flat',
                       padx=10, pady=2, cursor='hand2').pack(side='right', padx=3)
             
-            # 删除按钮
-            def _delete(sid=sku_id, r=row):
+            # 删除按钮(带确认)
+            def _delete(sid=sku_id, r=row, bname=name):
+                if not messagebox.askyesno("确认删除", f"确定删除 {bname} (SKU:{sid})？"):
+                    return
                 remove_bookmark(sid)
                 r.destroy()
                 item_frames.remove(r)
