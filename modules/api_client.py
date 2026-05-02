@@ -1416,6 +1416,14 @@ class RSIClient:
             interceptor = SKUInterceptor(self.page, keywords="", exclude_keywords="")
             interceptor._register_interceptor()
             
+            # DEBUG: 注册全量response handler，看page.on到底有没有触发
+            _debug_resp_count = [0]
+            def _debug_all_responses(response):
+                _debug_resp_count[0] += 1
+                if _debug_resp_count[0] <= 10:
+                    log.info(f"   🔍 [DEBUG-RESP] #{_debug_resp_count[0]}: status={response.status} url={response.url[:100]}")
+            self.page.on('response', _debug_all_responses)
+            
             # RSI商店用 ?page=N URL参数分页
             base_url = f"https://robertsspaceindustries.com/en/store/pledge/browse/{category}"
             
@@ -1441,7 +1449,7 @@ class RSIClient:
                 # DEBUG: 没拦截到商品时dump响应摘要
                 products = interceptor.get_all_products()
                 if not products and page_num == 1:
-                    log.warning(f"   🔍 [DEBUG] 第1页拦截到0个商品, 原始响应数={len(interceptor._raw_responses)}")
+                    log.warning(f"   🔍 [DEBUG] 第1页拦截到0个商品, 原始响应数={len(interceptor._raw_responses)}, 全量response数={_debug_resp_count[0]}")
                     for i, (url, op, body_preview) in enumerate(interceptor._raw_responses[:5]):
                         log.warning(f"   🔍 [DEBUG] 响应{i}: op={op}, body前200字={body_preview[:200]}")
                 new_count = 0
