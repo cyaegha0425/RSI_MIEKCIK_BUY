@@ -62,6 +62,7 @@ CFG = {
     # 列表页浏览URL前缀（搜索关键词拼接在后面）
     "BROWSE_URL_PREFIX": "https://robertsspaceindustries.com/en/store/pledge/browse/extras/standalone-ships?page=1&sortField=price&sortDir=desc&keywords=",
     # 搜索关键词（空格用+号，如 "Kraken" 或 "Drake+Kraken"）
+    "ITEM_PRICE": 0,
     "SEARCH_KEYWORDS": "Kraken",
     # 排除关键词（英文逗号分隔，如"Privateer,DUR"）
     "EXCLUDE_KEYWORDS": "",

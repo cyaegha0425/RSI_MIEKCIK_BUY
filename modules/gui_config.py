@@ -545,9 +545,26 @@ def _show_config_dialog():
     search_entry.insert(0, saved_config.get("search_keywords", CFG["SEARCH_KEYWORDS"]) if saved_config else CFG["SEARCH_KEYWORDS"])
     search_entry.pack(side='left', padx=5)
     
+
+    # ===== 商品价格(USD) =====
+    price_row = tk.Frame(root, bg=CFG_BG_COLOR)
+    price_row.place(relx=0.5, y=460, anchor='n')
+    
+    tk.Label(price_row, text="💰价格(USD):", font=("Microsoft YaHei UI", 11),
+             fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR).pack(side='left')
+    
+    _create_help_button(price_row, "商品价格(美元)：\n1. API加购后结账需要此价格\n2. 如 PTV=15, 黑海妖=1500, 白海妖=2000\n3. 留空则从页面自动获取").pack(side='left', padx=3)
+    
+    price_entry = tk.Entry(price_row, font=("Microsoft YaHei UI", 11), width=22,
+                           bg="white", fg="black", insertbackground="black",
+                           relief='flat', bd=2)
+    saved_price = saved_config.get("item_price", "") if saved_config else ""
+    price_entry.insert(0, str(saved_price))
+    price_entry.pack(side='left', padx=5)
+    
     # 排除关键词行
     exclude_row = tk.Frame(root, bg=CFG_BG_COLOR)
-    exclude_row.place(relx=0.5, y=460, anchor='n')
+    exclude_row.place(relx=0.5, y=500, anchor='n')
     
     tk.Label(exclude_row, text="🚫排除关键词(伏击无效)", font=("Microsoft YaHei UI", 11),
              fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR).pack(side='left')
@@ -575,13 +592,13 @@ def _show_config_dialog():
                               font=("Microsoft YaHei UI", 11),
                               fg="white", bg="#7B8FB7", relief='flat',
                               padx=18, pady=5, cursor='hand2')
-    advanced_btn.place(relx=0.38, y=510, anchor='n')
+    advanced_btn.place(relx=0.38, y=550, anchor='n')
     
     latency_btn = tk.Button(root, text="延迟测试", command=lambda: show_latency_dialog(root),
                               font=("Microsoft YaHei UI", 11),
                               fg="white", bg="#7B8FB7", relief='flat',
                               padx=18, pady=5, cursor='hand2')
-    latency_btn.place(relx=0.62, y=510, anchor='n')
+    latency_btn.place(relx=0.62, y=550, anchor='n')
     
     # ===== 按钮行 =====
     start_btn = tk.Button(root, text="开始抢购", command=lambda: None,
@@ -624,7 +641,8 @@ def _show_config_dialog():
         config_data = {
             "target_time": target_time,
             "search_keywords": search_entry.get().strip(),
-            "exclude_keywords": exclude_entry.get().strip(),
+            "exclude_keywords": exclude_entry.get(),
+                "item_price": price_entry.get().strip(),
             "time_offset": advanced_offset.get(),
             "proxy": advanced_proxy.get(),
             "sku_id": sku_entry.get().strip(),
@@ -639,6 +657,10 @@ def _show_config_dialog():
         CFG["TARGET_TIME"] = target_time
         CFG["SEARCH_KEYWORDS"] = search_entry.get().strip()
         CFG["EXCLUDE_KEYWORDS"] = exclude_entry.get().strip()
+        try:
+            CFG["ITEM_PRICE"] = float(price_entry.get())
+        except:
+            CFG["ITEM_PRICE"] = 0
         CFG["AMBUSH_MODE"] = ambush_mode_var.get()
         CFG["SKU_ID"] = sku_entry.get().strip()
         CFG["INPUT_MODE"] = input_mode_var.get()

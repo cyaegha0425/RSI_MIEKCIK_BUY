@@ -526,8 +526,16 @@ class RSIClient:
         log.info("📍 [极速结账] 开始结账...")
         total = self.cart_total
         if total <= 0:
-            log.error("❌ 未获取到商品价格，无法结账")
-            return False
+            # 尝试从预设价格获取
+            from . import config
+            preset_price = config.CFG.get("ITEM_PRICE", 0)
+            if preset_price and preset_price > 0:
+                total = float(preset_price)
+                self.cart_total = total
+                log.info(f"   💰 使用预设价格: ${total}")
+            else:
+                log.error("❌ 未获取到商品价格，无法结账")
+                return False
         log.info(f"   商品价格: ${total}")
         
         # 步骤2: 应用信用点 (credit_update)
@@ -627,24 +635,65 @@ class RSIClient:
                         if (btnText.toUpperCase().includes('OUT OF STOCK')) continue;
                         
                         // 从React fiber提取item.id (skuId)
+                        // 搜索所有__react开头的key (Fiber和Props都可能)
                         for (const key of Object.keys(card)) {
-                            if (!key.startsWith('__reactFiber')) continue;
+                            if (!key.startsWith('__react')) continue;
                             try {
-                                let fiber = card[key];
-                                // 沿return链向上搜索, 最多10层
-                                for (let i = 0; i < 10; i++) {
-                                    if (!fiber) break;
-                                    // 检查memoizedProps.item.id
-                                    if (fiber.memoizedProps && fiber.memoizedProps.item && fiber.memoizedProps.item.id) {
-                                        return { found: true, skuId: String(fiber.memoizedProps.item.id), title: title };
+                                const searchObj = (obj, depth) => {
+                                    if (!obj || typeof obj !== 'object' || depth > 6) return null;
+                                    // 直接检查item.id
+                                    if (obj.item && obj.item.id) return String(obj.item.id);
+                                    // 递归搜索props
+                                    for (const pk of ['memoizedProps', 'pendingProps', 'props']) {
+                                        if (obj[pk]) {
+                                            const r = searchObj(obj[pk], depth + 1);
+                                            if (r) return r;
+                                        }
                                     }
-                                    // 检查pendingProps.item.id
-                                    if (fiber.pendingProps && fiber.pendingProps.item && fiber.pendingProps.item.id) {
-                                        return { found: true, skuId: String(fiber.pendingProps.item.id), title: title };
+                                    // 沿return链上搜
+                                    if (obj.return) {
+                                        const r = searchObj(obj.return, depth + 1);
+                                        if (r) return r;
                                     }
-                                    fiber = fiber.return;
+                                    // alternate分支
+                                    if (obj.alternate) {
+                                        const r = searchObj(obj.alternate, depth + 1);
+                                        if (r) return r;
+                                    }
+                                    return null;
+                                };
+                                const skuId = searchObj(card[key], 0);
+                                if (skuId) {
+                                    return { found: true, skuId: skuId, title: title };
                                 }
                             } catch(e) {}
+                        }
+                        // 也检查按钮的React fiber
+                        if (btn) {
+                            for (const key of Object.keys(btn)) {
+                                if (!key.startsWith('__reactFiber')) continue;
+                                try {
+                                    const searchObj = (obj, depth) => {
+                                        if (!obj || typeof obj !== 'object' || depth > 6) return null;
+                                        if (obj.item && obj.item.id) return String(obj.item.id);
+                                        for (const pk of ['memoizedProps', 'pendingProps', 'props']) {
+                                            if (obj[pk]) {
+                                                const r = searchObj(obj[pk], depth + 1);
+                                                if (r) return r;
+                                            }
+                                        }
+                                        if (obj.return) {
+                                            const r = searchObj(obj.return, depth + 1);
+                                            if (r) return r;
+                                        }
+                                        return null;
+                                    };
+                                    const skuId = searchObj(btn[key], 0);
+                                    if (skuId) {
+                                        return { found: true, skuId: skuId, title: title };
+                                    }
+                                } catch(e) {}
+                            }
                         }
                     }
                     return { found: false, error: 'no skuId in fiber' };
