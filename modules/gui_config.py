@@ -466,12 +466,12 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
                     _scan_msg_queue.put({'type': 'status', 'text': '❌ 浏览器启动失败'})
                     return
                 
-                page = ctx.pages[0] if ctx.pages else ctx.new_page()
-                
                 # 加载cookies（复用登录态）
                 _scan_msg_queue.put({'type': 'status', 'text': '加载登录态...'})
                 browser_mod.login(ctx)
-                page = ctx.pages[0] if ctx.pages else ctx.new_page()
+                
+                # 必须创建新page！CDP连接的ctx.pages[0]是Edge预存tab，Playwright事件hook不上去
+                page = ctx.new_page()
                 
                 # 扫描
                 client = RSIClient(page)
