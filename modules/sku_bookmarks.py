@@ -13,6 +13,16 @@ def load_bookmarks():
         with open(BOOKMARKS_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
     except:
+        # 如果bookmarks不存在，从example复制
+        import shutil
+        example_file = os.path.join(os.path.dirname(__file__), '..', 'sku_bookmarks.example.json')
+        if os.path.exists(example_file):
+            try:
+                shutil.copy2(example_file, BOOKMARKS_FILE)
+                with open(BOOKMARKS_FILE, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except:
+                pass
         return []
 
 def save_bookmarks(bookmarks):

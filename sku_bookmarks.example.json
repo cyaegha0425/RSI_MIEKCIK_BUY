@@ -1,0 +1,27 @@
+[
+  {
+    "name": "PTV Buggy",
+    "sku_id": "10898",
+    "price": 15
+  },
+  {
+    "name": "ATLS",
+    "sku_id": "17381",
+    "price": 40
+  },
+  {
+    "name": "Arrow",
+    "sku_id": "10417",
+    "price": 75
+  },
+  {
+    "name": "Pioneer Warbond",
+    "sku_id": "18040",
+    "price": 825
+  },
+  {
+    "name": "Pioneer Standalone",
+    "sku_id": "18039",
+    "price": 925
+  }
+]

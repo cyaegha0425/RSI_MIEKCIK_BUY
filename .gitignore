@@ -13,3 +13,4 @@ dist/
 *.spec
 test_*.py
 screenshots/
+sku_bookmarks.json
