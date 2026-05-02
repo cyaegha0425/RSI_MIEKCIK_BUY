@@ -903,7 +903,7 @@ class RSIClient:
                     // 读取卡片价格
                     const priceEl = card.querySelector('.a-priceUnit__amount');
                     const priceText = priceEl ? priceEl.innerText.trim() : '';
-                    const priceMatch = priceText.match(/\$([\d,.]+)/);
+                    const priceMatch = priceText.match(/\\$([\\d,.]+)/);
                     const price = priceMatch ? parseFloat(priceMatch[1].replace(',', '')) : 0;
                     
                     info.push({{title, status: '目标', hasWarbond, btnText, isOutOfStock, price}});
@@ -1245,7 +1245,7 @@ class RSIClient:
                         
                         if (priceEl) {
                             const priceText = priceEl.innerText.trim();
-                            const m = priceText.match(/\$?([\d,.]+)/);
+                            const m = priceText.match(/\\$?([\\d,.]+)/);
                             if (m) {
                                 price = parseFloat(m[1].replace(',', ''));
                             }
@@ -1265,7 +1265,7 @@ class RSIClient:
                             const priceEl = item.querySelector('.a-priceUnit__amount');
                             if (priceEl) {
                                 const priceText = priceEl.innerText.trim();
-                                const m = priceText.match(/\$?([\d,.]+)/);
+                                const m = priceText.match(/\\$?([\\d,.]+)/);
                                 if (m) {
                                     result.total = parseFloat(m[1].replace(',', ''));
                                 }

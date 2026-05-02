@@ -884,8 +884,7 @@ def _show_config_dialog():
         # SKU直购模式必须填写价格
         if input_mode_var.get() == "sku" and CFG["ITEM_PRICE"] <= 0:
             from tkinter import messagebox
-            messagebox.showwarning("⚠️ 价格未填写", "SKU ID模式必须准确填写对应信用点价格才可正常使用！
-价格错误造成的一切后果自负")
+            messagebox.showwarning("⚠️ 价格未填写", "SKU ID模式必须准确填写对应信用点价格才可正常使用！\n价格错误造成的一切后果自负")
             return
         
         if advanced_offset.get():
