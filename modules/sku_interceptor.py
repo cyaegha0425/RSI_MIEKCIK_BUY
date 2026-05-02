@@ -7,6 +7,7 @@ SKU拦截器模块 - 从GraphQL响应中提取skuId
 
 import json
 import re
+import time
 import logging
 from typing import Optional, List, Dict
 
@@ -33,6 +34,7 @@ class SKUInterceptor:
             exclude_keywords: 排除关键词（英文逗号分隔）
         """
         self.page = page
+        self._start_time = time.time()  # 计时用
         self.keywords = [k.strip().lower() for k in keywords.split() if k.strip()]
         self.exclude_keywords = [k.strip().lower() for k in exclude_keywords.split(',') if k.strip()]
         
@@ -144,6 +146,12 @@ class SKUInterceptor:
         # 跳过无skuId或不在架的商品
         if not sku_id:
             return
+        
+        # 计时：首次拦截到商品的时间
+        elapsed = time.time() - self._start_time
+        if elapsed > 0:
+            log.info(f"   [计时] 首次商品拦截: +{elapsed:.1f}秒")
+            self._start_time = -999  # 只记录一次
         
         # 记录商品信息
         product_info = {
