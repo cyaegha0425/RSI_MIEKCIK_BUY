@@ -128,13 +128,13 @@ def _show_clear_cart_dialog(gui, _clear_cart_event):
 # 高级设置弹窗 (570x450)
 # ============================================================
 
-def _show_advanced_settings_dialog(parent, current_offset, current_proxy):
+def _show_advanced_settings_dialog(parent, current_offset, current_proxy, current_manual_offset="", current_manual_only=False):
     """显示高级设置对话框"""
     import tkinter as tk
     
     dialog = tk.Toplevel(parent)
     dialog.title("高级设置")
-    dialog.geometry("570x450")
+    dialog.geometry("570x520")
     dialog.attributes('-topmost', True)
     dialog.transient(parent)
     dialog.grab_set()
@@ -150,15 +150,15 @@ def _show_advanced_settings_dialog(parent, current_offset, current_proxy):
                      fg=GUI_TITLE_COLOR, bg=GUI_BG_COLOR)
     title.pack()
     
-    # 时间偏移标签
+    # === 基础时间偏移 ===
     offset_label_frame = tk.Frame(dialog, bg=GUI_BG_COLOR, padx=4, pady=1)
-    offset_label_frame.place(relx=0.5, y=80, anchor='n')
-    tk.Label(offset_label_frame, text="时间偏移:", font=("Microsoft YaHei UI", 14),
-             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR).pack()
+    offset_label_frame.place(relx=0.5, y=60, anchor='n')
+    tk.Label(offset_label_frame, text="🕐 基础时间偏移", font=("Microsoft YaHei UI", 14, "bold"),
+             fg=GUI_TITLE_COLOR, bg=GUI_BG_COLOR).pack()
     
     # 时间偏移输入框+提示
     offset_input_frame = tk.Frame(dialog, bg=GUI_BG_COLOR, padx=4, pady=4)
-    offset_input_frame.place(relx=0.5, y=115, anchor='n')
+    offset_input_frame.place(relx=0.5, y=92, anchor='n')
     offset_entry = tk.Entry(offset_input_frame, font=("Microsoft YaHei UI", 12), width=10,
                             bg="white", fg="black", insertbackground="black", relief='flat', bd=2)
     offset_entry.insert(0, current_offset)
@@ -166,15 +166,37 @@ def _show_advanced_settings_dialog(parent, current_offset, current_proxy):
     tk.Label(offset_input_frame, text="秒 (正值=提前)", font=("Microsoft YaHei UI", 11),
              fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR, padx=12).pack(side='left')
     
-    # 代理地址标签
+    # === 手动偏移微调 ===
+    manual_label_frame = tk.Frame(dialog, bg=GUI_BG_COLOR, padx=4, pady=1)
+    manual_label_frame.place(relx=0.5, y=135, anchor='n')
+    tk.Label(manual_label_frame, text="🔧 手动偏移微调", font=("Microsoft YaHei UI", 14, "bold"),
+             fg=GUI_TITLE_COLOR, bg=GUI_BG_COLOR).pack(side='left')
+    _create_help_button(manual_label_frame, "在自动校准基础上叠加微调\n正数=本地比服务器快，需多等\n负数=本地比服务器慢，可提前发\n如本地快0.15秒，填+0.15\n勾选纯手动则跳过自动校准").pack(side='left', padx=3)
+    
+    manual_offset_frame = tk.Frame(dialog, bg=GUI_BG_COLOR, padx=4, pady=4)
+    manual_offset_frame.place(relx=0.5, y=167, anchor='n')
+    manual_offset_entry = tk.Entry(manual_offset_frame, font=("Microsoft YaHei UI", 12), width=10,
+                            bg="white", fg="black", insertbackground="black", relief='flat', bd=2)
+    manual_offset_entry.insert(0, current_manual_offset)
+    manual_offset_entry.pack(side='left')
+    tk.Label(manual_offset_frame, text="秒 (叠加计算)", font=("Microsoft YaHei UI", 11),
+             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR, padx=8).pack(side='left')
+    manual_only_var = tk.BooleanVar(value=current_manual_only)
+    tk.Checkbutton(manual_offset_frame, text="纯手动", variable=manual_only_var,
+                   font=("Microsoft YaHei UI", 10), fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR,
+                   selectcolor="white", activebackground=GUI_BG_COLOR,
+                   activeforeground=GUI_TEXT_COLOR).pack(side='left', padx=5)
+    
+    # === 代理地址 ===
+    # === 代理地址 ===
     proxy_label_frame = tk.Frame(dialog, bg=GUI_BG_COLOR, padx=4, pady=1)
-    proxy_label_frame.place(relx=0.5, y=185, anchor='n')
-    tk.Label(proxy_label_frame, text="代理地址:", font=("Microsoft YaHei UI", 14),
-             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR).pack()
+    proxy_label_frame.place(relx=0.5, y=220, anchor='n')
+    tk.Label(proxy_label_frame, text="🌐 代理地址", font=("Microsoft YaHei UI", 14, "bold"),
+             fg=GUI_TITLE_COLOR, bg=GUI_BG_COLOR).pack()
     
     # 代理地址输入框+提示
     proxy_input_frame = tk.Frame(dialog, bg=GUI_BG_COLOR, padx=4, pady=4)
-    proxy_input_frame.place(relx=0.5, y=220, anchor='n')
+    proxy_input_frame.place(relx=0.5, y=252, anchor='n')
     proxy_entry = tk.Entry(proxy_input_frame, font=("Microsoft YaHei UI", 12), width=28,
                            bg="white", fg="black", insertbackground="black", relief='flat', bd=2)
     proxy_entry.insert(0, current_proxy or "")
@@ -183,11 +205,13 @@ def _show_advanced_settings_dialog(parent, current_offset, current_proxy):
              fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR, padx=12).pack(side='left')
     
     # 返回值存储
-    result = {"offset": current_offset, "proxy": current_proxy}
+    result = {"offset": current_offset, "proxy": current_proxy, "manual_offset": current_manual_offset, "manual_only": current_manual_only}
     
     def on_confirm():
         result["offset"] = offset_entry.get().strip()
         result["proxy"] = proxy_entry.get().strip()
+        result["manual_offset"] = manual_offset_entry.get().strip()
+        result["manual_only"] = manual_only_var.get()
         dialog.destroy()
     
     def on_cancel():
@@ -195,7 +219,7 @@ def _show_advanced_settings_dialog(parent, current_offset, current_proxy):
     
     # 按钮
     btn_frame = tk.Frame(dialog, bg=GUI_BG_COLOR)
-    btn_frame.place(relx=0.5, y=310, anchor='n')
+    btn_frame.place(relx=0.5, y=340, anchor='n')
     tk.Button(btn_frame, text="确认", command=on_confirm, font=("Microsoft YaHei UI", 12, "bold"),
               fg="white", bg="#7B8FB7", relief='flat', padx=22, pady=8, cursor='hand2').pack(side='left', padx=15)
     tk.Button(btn_frame, text="取消", command=on_cancel, font=("Microsoft YaHei UI", 12, "bold"),
@@ -401,62 +425,44 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
     scan_status_label.pack()
     
     def _scan_all_skus():
-        """触发全量SKU扫描"""
-        from . import config
-        from .api_client import RSIClient
-        
+        """触发全量SKU扫描（复用browser.create_browser启动浏览器）"""
         scan_btn.config(state='disabled', text="扫描中...")
-        scan_status_var.set("正在连接浏览器...")
+        scan_status_var.set("准备启动浏览器...")
         dialog.update()
         
         def do_scan():
-            page = None
+            pw = None
             try:
-                # 1. 尝试从已运行的client获取page
-                gui = config.get_gui()
-                if gui and hasattr(gui, 'client') and gui.client:
-                    try:
-                        if gui.client.is_page_alive():
-                            page = gui.client.page
-                    except:
-                        pass
+                from . import browser as browser_mod
+                from .api_client import RSIClient
+                from playwright.sync_api import sync_playwright
                 
-                # 2. 如果没有client，自己连CDP
-                if not page:
-                    scan_status_var.set("连接浏览器CDP...")
-                    dialog.update()
-                    try:
-                        import subprocess
-                        # 检查CDP端口
-                        import urllib.request
-                        try:
-                            resp = urllib.request.urlopen("http://127.0.0.1:9222/json/version", timeout=3)
-                            cdp_ok = True
-                        except:
-                            cdp_ok = False
-                        
-                        if not cdp_ok:
-                            scan_status_var.set("⚠️ 请先启动Edge(CDP端口9222)")
-                            scan_btn.config(state='normal', text="🔍 扫描全量SKU")
-                            return
-                        
-                        from playwright.sync_api import sync_playwright
-                        pw = sync_playwright().start()
-                        browser = pw.chromium.connect_over_cdp("http://127.0.0.1:9222", timeout=8000)
-                        context = browser.contexts[0] if browser.contexts else browser.new_context()
-                        page = context.pages[0] if context.pages else context.new_page()
-                    except Exception as e:
-                        scan_status_var.set(f"⚠️ 浏览器连接失败: {str(e)[:40]}")
-                        scan_btn.config(state='normal', text="🔍 扫描全量SKU")
-                        return
+                # 复用browser模块（杀Edge→启动CDP→5次重试）
+                scan_status_var.set("启动浏览器...")
+                dialog.update()
+                pw = sync_playwright().start()
+                ctx = browser_mod.create_browser(pw)
+                if not ctx:
+                    scan_status_var.set("❌ 浏览器启动失败")
+                    return
                 
-                # 创建临时client用于扫描
+                page = ctx.pages[0] if ctx.pages else ctx.new_page()
+                
+                # 加载cookies（复用登录态）
+                scan_status_var.set("加载登录态...")
+                dialog.update()
+                browser_mod.login(ctx)
+                page = ctx.pages[0] if ctx.pages else ctx.new_page()
+                
+                # 扫描
                 client = RSIClient(page)
                 
                 def on_progress(pg, total):
                     scan_status_var.set(f"扫描中: 第{pg}页, 已发现{total}个SKU")
                     dialog.update()
                 
+                scan_status_var.set("正在扫描RSI商店...")
+                dialog.update()
                 products = client.scan_all_skus(progress_callback=on_progress)
                 if products:
                     added = merge_bookmarks(products)
@@ -465,7 +471,7 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
                 else:
                     scan_status_var.set("⚠️ 未扫描到SKU，请确保已登录RSI")
             except Exception as e:
-                scan_status_var.set(f"❌ 扫描失败: {str(e)[:50]}")
+                scan_status_var.set(f"❌ 扫描失败: {str(e)[:60]}")
             finally:
                 scan_btn.config(state='normal', text="🔍 扫描全量SKU")
         
@@ -732,28 +738,9 @@ def _show_config_dialog():
                            fg="#666666", bg=CFG_BG_COLOR)
     warning_time.place(relx=0.5, y=260, anchor='n')
     
-    # ===== 偏移+关键词（横排布局） =====
-    # 偏移行
-    offset_row = tk.Frame(root, bg=CFG_BG_COLOR)
-    offset_row.place(relx=0.5, y=300, anchor='n')
-    
-    tk.Label(offset_row, text="🕐偏移(秒)", font=("Microsoft YaHei UI", 11),
-             fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR).pack(side='left')
-    
-    _create_help_button(offset_row, "在自动校准基础上微调（叠加计算）\n正数=本地比服务器快，需多等\n负数=本地比服务器慢，可提前发\n如本地快0.15秒，填+0.15\n勾选\"纯手动\"则跳过自动校准").pack(side='left', padx=3)
-    
-    offset_entry = tk.Entry(offset_row, font=("Microsoft YaHei UI", 11), width=10,
-                            bg="white", fg="black", insertbackground="black",
-                            relief='flat', bd=2)
-    saved_offset = saved_config.get("manual_time_offset", "") if saved_config else ""
-    offset_entry.insert(0, saved_offset)
-    offset_entry.pack(side='left', padx=5)
-    
+    # ===== 偏移已合并进高级设置 =====
+    manual_offset_var = tk.StringVar(value=saved_config.get("manual_time_offset", "") if saved_config else "")
     manual_only_var = tk.BooleanVar(value=saved_config.get("manual_only", False) if saved_config else False)
-    tk.Checkbutton(offset_row, text="纯手动", variable=manual_only_var,
-                   font=("Microsoft YaHei UI", 10), fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR,
-                   selectcolor=GUI_BG_COLOR, activebackground=CFG_BG_COLOR,
-                   activeforeground=GUI_TEXT_COLOR).pack(side='left', padx=5)
     
     # ===== 输入方式选择区域 =====
     input_mode_frame = tk.Frame(root, bg=CFG_BG_COLOR, padx=4, pady=2)
@@ -873,9 +860,11 @@ def _show_config_dialog():
     advanced_proxy = tk.StringVar(value=saved_config.get("proxy", CFG["PROXY"]) if saved_config else (CFG["PROXY"] or ""))
     
     def _open_advanced_settings():
-        result = _show_advanced_settings_dialog(root, advanced_offset.get(), advanced_proxy.get())
+        result = _show_advanced_settings_dialog(root, advanced_offset.get(), advanced_proxy.get(), manual_offset_var.get(), manual_only_var.get())
         advanced_offset.set(result["offset"])
         advanced_proxy.set(result["proxy"])
+        manual_offset_var.set(result["manual_offset"])
+        manual_only_var.set(result["manual_only"])
     
     advanced_btn = tk.Button(root, text="高级设置", command=_open_advanced_settings,
                               font=("Microsoft YaHei UI", 11),
@@ -937,7 +926,7 @@ def _show_config_dialog():
             "sku_id": sku_entry.get().strip(),
             "input_mode": input_mode_var.get(),
             "ambush_mode": ambush_mode_var.get(),
-            "manual_time_offset": offset_entry.get().strip(),
+            "manual_time_offset": manual_offset_var.get(),
             "manual_only": manual_only_var.get(),
         }
         _save_config(config_data)
@@ -961,8 +950,8 @@ def _show_config_dialog():
                 pass
         if advanced_proxy.get():
             CFG["PROXY"] = advanced_proxy.get()
-        if offset_entry.get().strip():
-            CFG["MANUAL_TIME_OFFSET"] = offset_entry.get().strip()
+        if manual_offset_var.get():
+            CFG["MANUAL_TIME_OFFSET"] = manual_offset_var.get()
         
         CFG["MANUAL_ONLY"] = manual_only_var.get()
         
