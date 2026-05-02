@@ -505,12 +505,17 @@ def _run_playwright_thread(result_queue):
                             from .sku_bookmarks import add_bookmark
                             if interceptor:
                                 all_products = interceptor.get_all_products()
+                                saved_count = 0
                                 for p in all_products:
-                                    bm_name = p.get('name', '') or 'Unknown'
+                                    bm_name = p.get('name', '') or ''
                                     bm_sku = p.get('skuId', '')
                                     bm_price = p.get('price', 0) or 0
+                                    # 过滤：名称为空或Unknown的不存
+                                    if not bm_name.strip() or bm_name.strip().lower() == 'unknown':
+                                        continue
                                     add_bookmark(bm_name, str(bm_sku), bm_price)
-                                log.info(f"   💾 已保存{len(all_products)}个商品到收藏夹")
+                                    saved_count += 1
+                                log.info(f"   💾 已保存{saved_count}个商品到收藏夹")
                             else:
                                 add_bookmark(keywords.strip() or "Unknown", current_sku_id, 0)
                         except Exception as e:
@@ -549,12 +554,17 @@ def _run_playwright_thread(result_queue):
                                         from .sku_bookmarks import add_bookmark
                                         if interceptor:
                                             all_products = interceptor.get_all_products()
+                                            _saved_count = 0
                                             for p in all_products:
-                                                _bm_name = p.get('name', '') or 'Unknown'
+                                                _bm_name = p.get('name', '') or ''
                                                 _bm_sku = p.get('skuId', '')
                                                 _bm_price = p.get('price', 0) or 0
+                                                # 过滤：名称为空或Unknown的不存
+                                                if not _bm_name.strip() or _bm_name.strip().lower() == 'unknown':
+                                                    continue
                                                 add_bookmark(_bm_name, str(_bm_sku), _bm_price)
-                                            log.info(f"   💾 已保存{len(all_products)}个商品到收藏夹")
+                                                _saved_count += 1
+                                            log.info(f"   💾 已保存{_saved_count}个商品到收藏夹")
                                         else:
                                             add_bookmark(keywords.strip() or "Unknown", current_sku_id, 0)
                                     except Exception as e:
