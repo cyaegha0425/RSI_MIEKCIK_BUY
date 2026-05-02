@@ -95,7 +95,7 @@ class RSIGUI:
             
             self.root = tk.Tk()
             mode_suffix = getattr(self, 'mode_label', '[正面硬刚]')
-            self.root.title(f"🐑 咩咩Kick! V3.0.0 咩咩Kick! {mode_suffix}")
+            self.root.title(f"咩咩蹄到好船来 V3.0.0 咩咩KICK！ {mode_suffix}")
             self.root.geometry("546x683")  # 竖版4:5比例
             self.root.resizable(False, False)
             self.root.attributes('-topmost', True)
@@ -119,7 +119,7 @@ class RSIGUI:
             
             # ===== 标题（用place直接放在root上） =====
             title_label = tk.Label(
-                self.root, text="🐑 咩咩Kick! V3.0.0 咩咩Kick!", 
+                self.root, text="咩咩蹄到好船来 V3.0.0 咩咩KICK！", 
                 font=("Microsoft YaHei UI", 14, "bold"),
                 fg="#1a3a5c", bg=PROGRESS_BG_COLOR, padx=6, pady=2
             )

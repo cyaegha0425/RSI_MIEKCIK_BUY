@@ -132,42 +132,40 @@ def create_browser(p):
             else:
                 raise Exception("Edge启动超时(20秒)")
             
-            # 通过CDP连接（最多3次尝试）
+            # 通过CDP连接（最多5次尝试，每次失败后重启Edge）
             browser = None
-            for cdp_attempt in range(3):
+            for cdp_attempt in range(5):
                 try:
-                    log.info(f"   CDP连接尝试{cdp_attempt+1}/3...")
-                    browser = p.chromium.connect_over_cdp(f"http://127.0.0.1:{debug_port}", timeout=15000)
+                    log.info(f"   CDP连接尝试{cdp_attempt+1}/5...")
+                    browser = p.chromium.connect_over_cdp(f"http://127.0.0.1:{debug_port}", timeout=8000)
                     break
                 except Exception as cdp_err:
-                    log.warning(f"   CDP连接失败(尝试{cdp_attempt+1}/3): {cdp_err}")
-                    if cdp_attempt == 2:
-                        # 第三次失败：杀Edge重启再连
-                        log.info("   杀Edge重启再试...")
+                    log.warning(f"   CDP连接失败(尝试{cdp_attempt+1}/5): {cdp_err}")
+                    # 每次失败都重启Edge
+                    log.info("   杀Edge重启...")
+                    try:
+                        subprocess.run(['taskkill', '/F', '/IM', 'msedge.exe'], capture_output=True, timeout=5)
+                    except:
+                        pass
+                    time.sleep(2)
+                    _edge_proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    # 等CDP端口就绪
+                    for i in range(15):
+                        time.sleep(1)
                         try:
-                            subprocess.run(['taskkill', '/F', '/IM', 'msedge.exe'], capture_output=True, timeout=5)
+                            urllib.request.urlopen(f"http://127.0.0.1:{debug_port}/json/version", timeout=2000)
+                            log.info(f"   Edge重启后CDP端口就绪 (第{i+1}秒)")
+                            break
                         except:
                             pass
-                        time.sleep(3)
-                        _edge_proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                        # 等CDP端口就绪
-                        for i in range(20):
-                            time.sleep(1)
-                            try:
-                                urllib.request.urlopen(f"http://127.0.0.1:{debug_port}/json/version", timeout=2000)
-                                log.info(f"   Edge重启后CDP端口就绪 (第{i+1}秒)")
-                                break
-                            except:
-                                pass
-                        else:
-                            raise Exception("Edge重启后CDP仍不可用")
-                        # 最后一次连接
-                        browser = p.chromium.connect_over_cdp(f"http://127.0.0.1:{debug_port}", timeout=15000)
                     else:
-                        time.sleep(1)
+                        if cdp_attempt < 4:
+                            log.warning("   Edge重启后CDP仍不可用，继续重试...")
+                            continue
+                        raise Exception("Edge重启后CDP仍不可用(5次均失败)")
             
             if not browser:
-                raise Exception("CDP连接3次均失败")
+                raise Exception("CDP连接5次均失败")
             
             ctx = browser.contexts[0] if browser.contexts else browser.new_context(
                 user_agent=CFG["UA"],

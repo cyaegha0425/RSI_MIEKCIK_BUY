@@ -452,7 +452,7 @@ def _show_config_dialog():
     current_dt = datetime.now()
     
     root = tk.Tk()
-    root.title("🐑 咩咩Kick! V3.0.0")
+    root.title("咩咩蹄到好船来 V3.0.0 咩咩KICK！")
     root.geometry("630x780")
     root.resizable(False, False)
     
@@ -472,7 +472,7 @@ def _show_config_dialog():
     CFG_BG_COLOR = GUI_BG_COLOR
     
     # ===== 标题 =====
-    title_label = tk.Label(root, text="🐑 咩咩Kick! V3.0.0",
+    title_label = tk.Label(root, text="咩咩蹄到好船来 V3.0.0 咩咩KICK！",
                           font=("Microsoft YaHei UI", 20, "bold"),
                           fg=GUI_TITLE_COLOR, bg=CFG_BG_COLOR)
     title_label.place(relx=0.5, y=30, anchor='n')

@@ -23,6 +23,17 @@ class RSIClient:
     
     def __init__(self, page):
         self.page = page
+        self._page_alive = True
+    
+    def is_page_alive(self) -> bool:
+        """检查page是否还活着（Edge没崩溃）"""
+        try:
+            self.page.evaluate("() => 1")
+            self._page_alive = True
+            return True
+        except:
+            self._page_alive = False
+            return False
         self.url = CFG["GRAPHQL_URL"]
         self.billing_address_id = None  # 默认地址ID，可从API获取或hardcode
         self.cart_data = {}

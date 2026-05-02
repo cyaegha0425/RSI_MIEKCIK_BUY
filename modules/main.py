@@ -702,7 +702,7 @@ def run():
         time.sleep(0.5)
         
         log.info("=" * 50)
-        log.info("🐑 咩咩Kick! V3.0.0")
+        log.info("咩咩蹄到好船来 V3.0.0 咩咩KICK！")
         log.info(f"⏰ 目标: {CFG['TARGET_TIME']}")
         ambush_mode = CFG.get("AMBUSH_MODE", False)
         log.info(f"🎮 模式: {'伏击模式' if ambush_mode else '正面硬刚'} ({'页面加购+API付款' if CFG['MODE'] == 'api' else '页面模式'})")
@@ -793,7 +793,7 @@ def help():
     """显示帮助信息"""
     print("""
 ╔══════════════════════════════════════════════════════════╗
-║       咩咩Kick! V3.0.0 - 抢光CIG的机库         ║
+║   咩咩蹄到好船来 V3.0.0 咩咩KICK！ - 抢光CIG的机库   ║
 ╠══════════════════════════════════════════════════════════╣
 ║                                                          ║
 ║  用法:                                                  ║
