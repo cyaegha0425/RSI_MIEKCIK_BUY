@@ -445,12 +445,12 @@ def _show_config_dialog():
     warning_time = tk.Label(root, text="(早于现在可能出现未知BUG)",
                            font=("Microsoft YaHei UI", 9),
                            fg="#666666", bg=CFG_BG_COLOR)
-    warning_time.place(relx=0.5, y=230, anchor='n')
+    warning_time.place(relx=0.5, y=260, anchor='n')
     
     # ===== 偏移+关键词（横排布局） =====
     # 偏移行
     offset_row = tk.Frame(root, bg=CFG_BG_COLOR)
-    offset_row.place(relx=0.5, y=270, anchor='n')
+    offset_row.place(relx=0.5, y=300, anchor='n')
     
     tk.Label(offset_row, text="🕐偏移(秒)", font=("Microsoft YaHei UI", 11),
              fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR).pack(side='left')
@@ -472,7 +472,7 @@ def _show_config_dialog():
     
     # ===== 输入方式选择区域 =====
     input_mode_frame = tk.Frame(root, bg=CFG_BG_COLOR, padx=4, pady=2)
-    input_mode_frame.place(relx=0.5, y=310, anchor='n')
+    input_mode_frame.place(relx=0.5, y=340, anchor='n')
     
     tk.Label(input_mode_frame, text="输入方式:", font=("Microsoft YaHei UI", 11),
              fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR).pack(side='left', padx=(0, 5))
@@ -512,7 +512,7 @@ def _show_config_dialog():
     
     # ===== SKU ID输入行 =====
     sku_row = tk.Frame(root, bg=CFG_BG_COLOR)
-    sku_row.place(relx=0.5, y=345, anchor='n')
+    sku_row.place(relx=0.5, y=380, anchor='n')
     
     tk.Label(sku_row, text="📦SKU ID:", font=("Microsoft YaHei UI", 11),
              fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR).pack(side='left')
@@ -532,7 +532,7 @@ def _show_config_dialog():
     
     # 搜索关键词行
     search_row = tk.Frame(root, bg=CFG_BG_COLOR)
-    search_row.place(relx=0.5, y=380, anchor='n')
+    search_row.place(relx=0.5, y=420, anchor='n')
     
     tk.Label(search_row, text="🔍搜索关键词(可选过滤)", font=("Microsoft YaHei UI", 11),
              fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR).pack(side='left')
@@ -547,7 +547,7 @@ def _show_config_dialog():
     
     # 排除关键词行
     exclude_row = tk.Frame(root, bg=CFG_BG_COLOR)
-    exclude_row.place(relx=0.5, y=420, anchor='n')
+    exclude_row.place(relx=0.5, y=460, anchor='n')
     
     tk.Label(exclude_row, text="🚫排除关键词(伏击无效)", font=("Microsoft YaHei UI", 11),
              fg=GUI_TEXT_COLOR, bg=CFG_BG_COLOR).pack(side='left')
@@ -560,11 +560,8 @@ def _show_config_dialog():
     exclude_entry.insert(0, saved_config.get("exclude_keywords", CFG["EXCLUDE_KEYWORDS"]) if saved_config else CFG["EXCLUDE_KEYWORDS"])
     exclude_entry.pack(side='left', padx=5)
     
-    # ===== 测试模式+高级设置（横排） =====
-    settings_row = tk.Frame(root, bg=GUI_BG_COLOR)
-    settings_row.place(relx=0.5, y=470, anchor='n')
+    # ===== 高级设置+延迟测试 =====
     
-
     # 高级设置变量
     advanced_offset = tk.StringVar(value=str(saved_config.get("time_offset", CFG["TIME_OFFSET"]) if saved_config else CFG["TIME_OFFSET"]))
     advanced_proxy = tk.StringVar(value=saved_config.get("proxy", CFG["PROXY"]) if saved_config else (CFG["PROXY"] or ""))
@@ -574,36 +571,36 @@ def _show_config_dialog():
         advanced_offset.set(result["offset"])
         advanced_proxy.set(result["proxy"])
     
-    advanced_btn = tk.Button(settings_row, text="高级设置", command=_open_advanced_settings,
+    advanced_btn = tk.Button(root, text="高级设置", command=_open_advanced_settings,
                               font=("Microsoft YaHei UI", 11),
                               fg="white", bg="#7B8FB7", relief='flat',
                               padx=18, pady=5, cursor='hand2')
-    advanced_btn.pack(side='left')
+    advanced_btn.place(relx=0.38, y=510, anchor='n')
     
-    latency_btn = tk.Button(settings_row, text="延迟测试", command=lambda: show_latency_dialog(root),
+    latency_btn = tk.Button(root, text="延迟测试", command=lambda: show_latency_dialog(root),
                               font=("Microsoft YaHei UI", 11),
                               fg="white", bg="#7B8FB7", relief='flat',
                               padx=18, pady=5, cursor='hand2')
-    latency_btn.pack(side='left', padx=10)
+    latency_btn.place(relx=0.62, y=510, anchor='n')
     
     # ===== 按钮行 =====
     start_btn = tk.Button(root, text="开始抢购", command=lambda: None,
                           font=("Microsoft YaHei UI", 13, "bold"),
                           fg="white", bg="#6A8CBA", relief='flat',
                           padx=25, pady=10, cursor='hand2')
-    start_btn.place(relx=0.38, y=520, anchor='n')
+    start_btn.place(relx=0.38, y=570, anchor='n')
     
     cancel_btn = tk.Button(root, text="取消", command=lambda: None,
                            font=("Microsoft YaHei UI", 13, "bold"),
                            fg="white", bg="#9E6B7A", relief='flat',
                            padx=25, pady=10, cursor='hand2')
-    cancel_btn.place(relx=0.62, y=520, anchor='n')
+    cancel_btn.place(relx=0.62, y=570, anchor='n')
     
     # ===== 警告提示 =====
     warning_label = tk.Label(root, text="⚠️ 请提前清空购物车，登录好账号",
                             font=("Microsoft YaHei UI", 10),
                             fg="black", bg=CFG_BG_COLOR)
-    warning_label.place(relx=0.5, y=590, anchor='n')
+    warning_label.place(relx=0.5, y=640, anchor='n')
     
 
     
