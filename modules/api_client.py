@@ -734,7 +734,7 @@ class RSIClient:
         
         log.info(f"   📋 共{r.get('total', 0)}个卡片")
         
-        # [DEBUG] 探测卡片React fiber，找skuId/id字段
+        # [DEBUG] 探测卡片React fiber, 找skuId/id字段(深度8层)
         try:
             fiber_debug = self.page.evaluate("""
                 () => {
@@ -742,62 +742,77 @@ class RSIClient:
                     if (cards.length === 0) return { error: 'no cards' };
                     
                     const results = [];
-                    for (let i = 0; i < Math.min(cards.length, 2); i++) {
+                    for (let i = 0; i < Math.min(cards.length, 1); i++) {
                         const card = cards[i];
                         const titleEl = card.querySelector('.c-skuCard__title, .c-skuCard__name, [class*="title"]');
                         const title = titleEl ? titleEl.innerText.trim() : 'Unknown';
                         
                         const found = {};
+                        const seen = new Set();
                         
-                        // 方法1: 遍历React fiber找含id/sku的props
-                        for (const key of Object.keys(card)) {
-                            if (!key.startsWith('__react')) continue;
+                        const search = (o, depth, path) => {
+                            if (!o || typeof o !== 'object' || depth > 8 || seen.size > 500) return;
                             try {
-                                let obj = card[key];
-                                const search = (o, depth, path) => {
-                                    if (!o || typeof o !== 'object' || depth > 3) return;
-                                    for (const [k, v] of Object.entries(o)) {
-                                        const np = path ? path + '.' + k : k;
-                                        if (typeof k === 'string' && (k === 'id' || k === 'skuId' || k === 'sku' || k === 'productId' || k === 'slug' || k === 'resourceId')) {
-                                            found[np] = String(v).substring(0, 100);
-                                        }
-                                        if (v && typeof v === 'object' && !np.includes('parent')) {
-                                            try { search(v, depth + 1, np); } catch(e) {}
+                                for (const [k, v] of Object.entries(o)) {
+                                    const np = path ? path + '.' + k : k;
+                                    if (np.includes('parent') || np.includes('sibling') || np.includes('stateNode') || np.includes('_owner')) continue;
+                                    if (/(id|sku|slug|resource|productId|variantId|itemId|storeItem)/i.test(k) && typeof v !== 'object') {
+                                        found[np] = String(v).substring(0, 100);
+                                    }
+                                    if (v && typeof v === 'object') {
+                                        const oid = np.substring(0, 60);
+                                        if (!seen.has(oid)) {
+                                            seen.add(oid);
+                                            try { search(v, depth + 1, np.substring(0, 80)); } catch(e) {}
                                         }
                                     }
-                                };
-                                search(obj, 0, key.substring(0, 15));
+                                }
                             } catch(e) {}
+                        };
+                        
+                        for (const key of Object.keys(card)) {
+                            if (!key.startsWith('__react')) continue;
+                            try { search(card[key], 0, 'c.' + key.substring(0, 20)); } catch(e) {}
                         }
                         
-                        // 方法2: 检查卡片所有data-*属性
+                        const btn = card.querySelector('.a-skuButton');
+                        if (btn) {
+                            for (const key of Object.keys(btn)) {
+                                if (!key.startsWith('__react')) continue;
+                                try { search(btn[key], 0, 'b.' + key.substring(0, 20)); } catch(e) {}
+                            }
+                        }
+                        
+                        const children = card.querySelectorAll('*');
+                        let cc = 0;
+                        for (const child of children) {
+                            if (cc > 15) break;
+                            for (const key of Object.keys(child)) {
+                                if (!key.startsWith('__reactProps')) continue;
+                                try {
+                                    const props = child[key];
+                                    if (props && typeof props === 'object') {
+                                        for (const [pk, pv] of Object.entries(props)) {
+                                            if (/(id|sku|slug|resource)/i.test(pk) && typeof pv !== 'object') {
+                                                found['ch.' + pk] = String(pv).substring(0, 100);
+                                            }
+                                        }
+                                    }
+                                } catch(e) {}
+                            }
+                            cc++;
+                        }
+                        
                         for (const attr of card.attributes) {
                             if (attr.name.startsWith('data-')) {
                                 found['attr.' + attr.name] = attr.value.substring(0, 100);
                             }
                         }
                         
-                        // 方法3: 检查按钮的React fiber
-                        const btn = card.querySelector('.a-skuButton');
-                        if (btn) {
-                            for (const key of Object.keys(btn)) {
-                                if (!key.startsWith('__reactProps')) continue;
-                                try {
-                                    const props = btn[key];
-                                    if (props && typeof props === 'object') {
-                                        found['btn.' + key.substring(0, 20)] = JSON.stringify(props).substring(0, 300);
-                                    }
-                                } catch(e) {}
-                            }
-                        }
-                        
-                        // 方法4: 检查卡片内所有a[href]链接
                         const links = card.querySelectorAll('a[href]');
-                        links.forEach((a, idx) => {
-                            found['link' + idx] = a.href;
-                        });
+                        links.forEach((a, idx) => { found['link' + idx] = a.href; });
                         
-                        results.push({ title, found });
+                        results.push({ title, found, totalFields: Object.keys(found).length });
                     }
                     return results;
                 }
@@ -805,7 +820,7 @@ class RSIClient:
             
             if isinstance(fiber_debug, list):
                 for item in fiber_debug:
-                    log.info(f"   [Fiber探针] 卡片: {item.get('title', '?')}")
+                    log.info(f"   [Fiber探针] 卡片: {item.get('title', '?')}, 找到{item.get('totalFields', 0)}个字段")
                     for k, v in item.get('found', {}).items():
                         log.info(f"      {k} = {v}")
             else:
