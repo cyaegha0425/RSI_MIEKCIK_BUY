@@ -71,7 +71,7 @@ def _show_clear_cart_dialog(gui, _clear_cart_event):
             bg_img_path = config.resource_path('gui_bg.png')
             if os.path.exists(bg_img_path):
                 bg_img = Image.open(bg_img_path)
-                bg_img = bg_img.resize((630, 780), Image.Resampling.LANCZOS)
+                bg_img = bg_img.resize((630, 480), Image.Resampling.LANCZOS)
                 cart_bg_image = ImageTk.PhotoImage(bg_img, master=dialog)
         except:
             pass
@@ -413,7 +413,7 @@ def _show_config_dialog():
         bg_img_path = config.resource_path('gui_bg.png')
         if os.path.exists(bg_img_path):
             bg_img = Image.open(bg_img_path)
-            bg_img = bg_img.resize((630, 720), Image.Resampling.LANCZOS)
+            bg_img = bg_img.resize((630, 780), Image.Resampling.LANCZOS)
             bg_photo = ImageTk.PhotoImage(bg_img, master=root)
             bg_image_ref[0] = bg_photo  # 保存引用
             bg_label = tk.Label(root, image=bg_photo)
@@ -676,11 +676,15 @@ def _show_config_dialog():
     saved_sku = saved_config.get("sku_id", "") if saved_config else ""
     sku_entry.insert(0, saved_sku)
     sku_entry.pack(side='left', padx=5)
-    
 
-    
+    # 📦收藏夹按钮
+    bookmark_btn = tk.Button(sku_row, text="📦", 
+                              command=lambda: _show_bookmarks_dialog(root, sku_entry, price_entry, input_mode_var, on_input_mode_change),
+                              font=("Microsoft YaHei UI", 10),
+                              fg="white", bg="#7B8FB7", relief='flat',
+                              padx=6, pady=2, cursor='hand2')
+    bookmark_btn.pack(side='left', padx=3)
 
-    
     # 搜索关键词行
     search_row = tk.Frame(root, bg=CFG_BG_COLOR)
     search_row.place(relx=0.5, y=420, anchor='n')
@@ -743,13 +747,13 @@ def _show_config_dialog():
                               font=("Microsoft YaHei UI", 11),
                               fg="white", bg="#7B8FB7", relief='flat',
                               padx=18, pady=5, cursor='hand2')
-    advanced_btn.place(relx=0.30, y=565, anchor='n')
+    advanced_btn.place(relx=0.38, y=565, anchor='n')
     
     latency_btn = tk.Button(root, text="延迟测试", command=lambda: show_latency_dialog(root),
                               font=("Microsoft YaHei UI", 11),
                               fg="white", bg="#7B8FB7", relief='flat',
                               padx=18, pady=5, cursor='hand2')
-    latency_btn.place(relx=0.55, y=565, anchor='n')
+    latency_btn.place(relx=0.62, y=565, anchor='n')
     
     # ===== 按钮行 =====
     start_btn = tk.Button(root, text="开始抢购", command=lambda: None,
