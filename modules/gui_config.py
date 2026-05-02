@@ -71,7 +71,7 @@ def _show_clear_cart_dialog(gui, _clear_cart_event):
             bg_img_path = config.resource_path('gui_bg.png')
             if os.path.exists(bg_img_path):
                 bg_img = Image.open(bg_img_path)
-                bg_img = bg_img.resize((630, 720), Image.Resampling.LANCZOS)
+                bg_img = bg_img.resize((630, 780), Image.Resampling.LANCZOS)
                 cart_bg_image = ImageTk.PhotoImage(bg_img, master=dialog)
         except:
             pass
@@ -254,7 +254,7 @@ def _show_config_dialog():
     
     root = tk.Tk()
     root.title("🐑 咩咩Kick! V3.0.0")
-    root.geometry("630x720")
+    root.geometry("630x780")
     root.resizable(False, False)
     
     # 尝试加载背景图
@@ -592,32 +592,32 @@ def _show_config_dialog():
                               font=("Microsoft YaHei UI", 11),
                               fg="white", bg="#7B8FB7", relief='flat',
                               padx=18, pady=5, cursor='hand2')
-    advanced_btn.place(relx=0.38, y=550, anchor='n')
+    advanced_btn.place(relx=0.38, y=555, anchor='n')
     
     latency_btn = tk.Button(root, text="延迟测试", command=lambda: show_latency_dialog(root),
                               font=("Microsoft YaHei UI", 11),
                               fg="white", bg="#7B8FB7", relief='flat',
                               padx=18, pady=5, cursor='hand2')
-    latency_btn.place(relx=0.62, y=550, anchor='n')
+    latency_btn.place(relx=0.62, y=555, anchor='n')
     
     # ===== 按钮行 =====
     start_btn = tk.Button(root, text="开始抢购", command=lambda: None,
                           font=("Microsoft YaHei UI", 13, "bold"),
                           fg="white", bg="#6A8CBA", relief='flat',
                           padx=25, pady=10, cursor='hand2')
-    start_btn.place(relx=0.38, y=570, anchor='n')
+    start_btn.place(relx=0.38, y=610, anchor='n')
     
     cancel_btn = tk.Button(root, text="取消", command=lambda: None,
                            font=("Microsoft YaHei UI", 13, "bold"),
                            fg="white", bg="#9E6B7A", relief='flat',
                            padx=25, pady=10, cursor='hand2')
-    cancel_btn.place(relx=0.62, y=570, anchor='n')
+    cancel_btn.place(relx=0.62, y=610, anchor='n')
     
     # ===== 警告提示 =====
     warning_label = tk.Label(root, text="⚠️ 请提前清空购物车，登录好账号",
                             font=("Microsoft YaHei UI", 10),
                             fg="black", bg=CFG_BG_COLOR)
-    warning_label.place(relx=0.5, y=640, anchor='n')
+    warning_label.place(relx=0.5, y=680, anchor='n')
     
 
     

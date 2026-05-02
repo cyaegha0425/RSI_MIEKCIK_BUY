@@ -495,6 +495,11 @@ def _run_playwright_thread(result_queue):
                         # 保存skuId到config供下次SKU ID模式使用
                         CFG["LAST_SKU_ID"] = current_sku_id
                         log.info(f"   💾 已保存skuId={current_sku_id}")
+                        # 自动保存到收藏夹
+                        try:
+                            from .sku_bookmarks import add_bookmark
+                            add_bookmark(keywords.strip() or "Unknown", current_sku_id, float(CFG.get("ITEM_PRICE", 0) or 0))
+                        except: pass
                         
                         success, error_code = client.api_add_to_cart(current_sku_id)
                         if success:
@@ -524,6 +529,11 @@ def _run_playwright_thread(result_queue):
                                     log.info("   ✅ API加购成功!")
                                     cart_success = True
                                     CFG["LAST_SKU_ID"] = current_sku_id
+                                    # 自动保存到收藏夹
+                                    try:
+                                        from .sku_bookmarks import add_bookmark
+                                        add_bookmark(keywords.strip() or "Unknown", current_sku_id, float(CFG.get("ITEM_PRICE", 0) or 0))
+                                    except: pass
                                     break
                                 if error_code == "HTTP429":
                                     log.warning("   ⚠️ HTTP 429 (限流)，sleep 3秒...")
