@@ -136,7 +136,15 @@ class CalibrationScheduler:
             CFG["SERVER_TIME_OFFSET"] = manual_offset
             log.info(f"   使用手动偏移: {manual_offset:+.3f}秒")
         else:
-            self.server_offset = self.client.calibrate_time(samples=10, interval=0.5)
+            remaining = self.get_remaining()
+            if remaining < 20:
+                log.info(f"   ⏰ 距T-0仅{remaining:.0f}秒，跳过校准(偏移=0)")
+                self.server_offset = 0.0
+            elif remaining < 40:
+                log.info(f"   ⏰ 距T-0仅{remaining:.0f}秒，快速校准5次")
+                self.server_offset = self.client.calibrate_time(samples=5, interval=0.3)
+            else:
+                self.server_offset = self.client.calibrate_time(samples=10, interval=0.5)
             CFG["SERVER_TIME_OFFSET"] = self.server_offset
             log.info(f"   初始校准偏移: {self.server_offset:+.3f}秒")
         
