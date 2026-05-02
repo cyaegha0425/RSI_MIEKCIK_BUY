@@ -610,6 +610,38 @@ class RSIClient:
         # 检查列表页是否有卡片（开抢后刷新可能刷早了，商品还没上架）
         # 最多刷5次，每次间隔1秒
         for attempt in range(1, 6):
+            # [DEBUG] 第一次检查时，同时探测页面上所有卡片相关的class
+            if attempt == 1:
+                try:
+                    dom_probe = self.page.evaluate("""
+                        () => {
+                            const all = document.querySelectorAll('*');
+                            const classMap = {};
+                            for (const el of all) {
+                                if (!el.className || typeof el.className !== 'string') continue;
+                                for (const cls of el.className.split(' ')) {
+                                    if (!cls) continue;
+                                    const lc = cls.toLowerCase();
+                                    if (lc.includes('card') || lc.includes('sku') || lc.includes('product') || lc.includes('pledge') || lc.includes('item') || lc.includes('listing')) {
+                                        if (!classMap[cls]) classMap[cls] = 0;
+                                        classMap[cls]++;
+                                    }
+                                }
+                            }
+                            // 也检查shadow DOM
+                            const shadowHosts = document.querySelectorAll('*');
+                            let shadowCount = 0;
+                            for (const el of shadowHosts) {
+                                if (el.shadowRoot) shadowCount++;
+                            }
+                            return { classes: classMap, shadowCount, bodyLen: document.body.innerHTML.length };
+                        }
+                    """)
+                    log.info(f"   [DOM探针] class统计: {dom_probe.get('classes', {})}")
+                    log.info(f"   [DOM探针] shadowRoot数: {dom_probe.get('shadowCount', 0)}, body长度: {dom_probe.get('bodyLen', 0)}")
+                except Exception as e:
+                    log.warning(f"   [DOM探针] 失败: {e}")
+            
             check_result = self.page.evaluate("""
                 () => {
                     const cards = document.querySelectorAll('.c-skuCard');
