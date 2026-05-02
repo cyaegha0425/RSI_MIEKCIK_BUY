@@ -405,29 +405,59 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
         from . import config
         from .api_client import RSIClient
         
-        # 获取当前page对象（从主窗口）
-        gui = config.get_gui()
-        page = None
-        if gui and hasattr(gui, 'client') and gui.client:
-            page = gui.client.page
-        if not page:
-            scan_status_var.set("⚠️ 请先启动抢购连接浏览器")
-            return
-        if not gui.client.is_page_alive():
-            scan_status_var.set("⚠️ 浏览器连接已断开")
-            return
-        
         scan_btn.config(state='disabled', text="扫描中...")
-        scan_status_var.set("正在扫描RSI商店...")
+        scan_status_var.set("正在连接浏览器...")
         dialog.update()
         
         def do_scan():
+            page = None
             try:
+                # 1. 尝试从已运行的client获取page
+                gui = config.get_gui()
+                if gui and hasattr(gui, 'client') and gui.client:
+                    try:
+                        if gui.client.is_page_alive():
+                            page = gui.client.page
+                    except:
+                        pass
+                
+                # 2. 如果没有client，自己连CDP
+                if not page:
+                    scan_status_var.set("连接浏览器CDP...")
+                    dialog.update()
+                    try:
+                        import subprocess
+                        # 检查CDP端口
+                        import urllib.request
+                        try:
+                            resp = urllib.request.urlopen("http://127.0.0.1:9222/json/version", timeout=3)
+                            cdp_ok = True
+                        except:
+                            cdp_ok = False
+                        
+                        if not cdp_ok:
+                            scan_status_var.set("⚠️ 请先启动Edge(CDP端口9222)")
+                            scan_btn.config(state='normal', text="🔍 扫描全量SKU")
+                            return
+                        
+                        from playwright.sync_api import sync_playwright
+                        pw = sync_playwright().start()
+                        browser = pw.chromium.connect_over_cdp("http://127.0.0.1:9222", timeout=8000)
+                        context = browser.contexts[0] if browser.contexts else browser.new_context()
+                        page = context.pages[0] if context.pages else context.new_page()
+                    except Exception as e:
+                        scan_status_var.set(f"⚠️ 浏览器连接失败: {str(e)[:40]}")
+                        scan_btn.config(state='normal', text="🔍 扫描全量SKU")
+                        return
+                
+                # 创建临时client用于扫描
+                client = RSIClient(page)
+                
                 def on_progress(pg, total):
                     scan_status_var.set(f"扫描中: 第{pg}页, 已发现{total}个SKU")
                     dialog.update()
                 
-                products = gui.client.scan_all_skus(progress_callback=on_progress)
+                products = client.scan_all_skus(progress_callback=on_progress)
                 if products:
                     added = merge_bookmarks(products)
                     scan_status_var.set(f"✅ 扫描完成: 发现{len(products)}个, 新增{added}个")
