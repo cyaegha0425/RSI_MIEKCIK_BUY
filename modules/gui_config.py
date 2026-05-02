@@ -216,7 +216,7 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
     """显示SKU收藏夹弹窗，支持搜索和选择"""
     import tkinter as tk
     from tkinter import messagebox
-    from .sku_bookmarks import load_bookmarks, remove_bookmark
+    from .sku_bookmarks import load_bookmarks, remove_bookmark, merge_bookmarks
     
     dialog = tk.Toplevel(parent)
     dialog.title("📦 SKU收藏夹")
@@ -390,13 +390,69 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
               fg="white", bg="#6A8CBA", relief='flat',
               padx=8, pady=2, cursor='hand2').pack(side='left', padx=5)
     
-    # 按钮行：关闭
+    # 扫描按钮+关闭按钮
     btn_row = tk.Frame(dialog, bg=GUI_BG_COLOR)
     btn_row.pack(pady=10)
+    
+    scan_status_var = tk.StringVar(value="")
+    scan_status_label = tk.Label(dialog, textvariable=scan_status_var,
+                                  font=("Microsoft YaHei UI", 9),
+                                  fg="#666666", bg=GUI_BG_COLOR)
+    scan_status_label.pack()
+    
+    def _scan_all_skus():
+        """触发全量SKU扫描"""
+        from . import config
+        from .api_client import RSIClient
+        
+        # 获取当前page对象（从主窗口）
+        gui = config.get_gui()
+        page = None
+        if gui and hasattr(gui, 'client') and gui.client:
+            page = gui.client.page
+        if not page:
+            scan_status_var.set("⚠️ 请先启动抢购连接浏览器")
+            return
+        if not gui.client.is_page_alive():
+            scan_status_var.set("⚠️ 浏览器连接已断开")
+            return
+        
+        scan_btn.config(state='disabled', text="扫描中...")
+        scan_status_var.set("正在扫描RSI商店...")
+        dialog.update()
+        
+        def do_scan():
+            try:
+                def on_progress(pg, total):
+                    scan_status_var.set(f"扫描中: 第{pg}页, 已发现{total}个SKU")
+                    dialog.update()
+                
+                products = gui.client.scan_all_skus(progress_callback=on_progress)
+                if products:
+                    added = merge_bookmarks(products)
+                    scan_status_var.set(f"✅ 扫描完成: 发现{len(products)}个, 新增{added}个")
+                    refresh_list()
+                else:
+                    scan_status_var.set("⚠️ 未扫描到SKU，请确保已登录RSI")
+            except Exception as e:
+                scan_status_var.set(f"❌ 扫描失败: {str(e)[:50]}")
+            finally:
+                scan_btn.config(state='normal', text="🔍 扫描全量SKU")
+        
+        import threading
+        t = threading.Thread(target=do_scan, daemon=True)
+        t.start()
+    
+    scan_btn = tk.Button(btn_row, text="🔍 扫描全量SKU", command=_scan_all_skus,
+              font=("Microsoft YaHei UI", 11, "bold"),
+              fg="white", bg="#5B8C5A", relief='flat',
+              padx=15, pady=5, cursor='hand2')
+    scan_btn.pack(side='left', padx=5)
+    
     tk.Button(btn_row, text="关闭", command=dialog.destroy,
               font=("Microsoft YaHei UI", 11, "bold"),
               fg="white", bg="#9E6B7A", relief='flat',
-              padx=20, pady=5, cursor='hand2').pack(side='left')
+              padx=20, pady=5, cursor='hand2').pack(side='left', padx=5)
     
     def _on_close():
         canvas.unbind_all("<MouseWheel>")

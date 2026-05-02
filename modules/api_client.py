@@ -533,9 +533,10 @@ class RSIClient:
         4. NextStep (flow.moveNext)
         5. 获取token/mark → validate
         """
-        # 步骤1: 获取商品价格（优先级：预设 > 拦截器 > DOM > 加购记录）
+        # 步骤1: 获取商品价格（优先级：预设 > 拦截器 > 探价 > 报错）
         log.info("📍 [极速结账] 开始结账...")
         total = self.cart_total
+        skip_credit = False  # 探价模式下信用点已应用
         if total <= 0:
             # 1. 预设价格
             from . import config
@@ -562,20 +563,44 @@ class RSIClient:
                     except:
                         pass
                     
+                    # 4. 探价模式：用大额信用点探测实际价格
+                    if total <= 0:
+                        log.info("   🔍 探价模式：查询购物车实际价格...")
+                        try:
+                            probe_result = self.gql("AddCreditMutation", {"amount": 99999, "storeFront": "pledge"})
+                            time.sleep(0.1)
+                            totals = probe_result.get('data', {}).get('store', {}).get('cart', {}).get('totals', {})
+                            cart_total = totals.get('total', 0)
+                            credits_info = totals.get('credits', {})
+                            max_applicable = credits_info.get('maxApplicable', 0)
+                            # cart_total可能是分，max_applicable可能是元
+                            if max_applicable and max_applicable > 0:
+                                total = float(max_applicable)
+                            elif cart_total and cart_total > 0:
+                                total = float(cart_total) / 100.0 if float(cart_total) > 100 else float(cart_total)
+                            if total > 0:
+                                self.cart_total = total
+                                log.info(f"   💰 探价成功: ${total} (maxApplicable={max_applicable}, total={cart_total})")
+                                # 价格已发现，信用点已应用，跳过步骤2的重复应用
+                                skip_credit = True
+                        except Exception as e:
+                            log.warning(f"   ⚠️ 探价失败: {e}")
+                    
                     if total <= 0:
                         log.error("❌ 未获取到商品价格，无法结账")
                         return False
         log.info(f"   商品价格: ${total}")
         
-        # 步骤2: 应用信用点 (credit_update)
-        log.info("📍 [极速结账] 应用信用点...")
-        result = self.gql("AddCreditMutation", {"amount": total, "storeFront": "pledge"})
-        time.sleep(0.1)
-        credits = result.get('data', {}).get('store', {}).get('cart', {}).get('totals', {}).get('credits', {})
-        if credits:
-            log.info(f"   ✅ 信用点: {credits.get('amount', '?')}, max={credits.get('maxApplicable', '?')}")
-        else:
-            log.warning(f"   ⚠️ 信用点结果: {json.dumps(result, ensure_ascii=False)[:300]}")
+        # 步骤2: 应用信用点 (credit_update)（探价模式下已应用，跳过）
+        if not skip_credit:
+            log.info("📍 [极速结账] 应用信用点...")
+            result = self.gql("AddCreditMutation", {"amount": total, "storeFront": "pledge"})
+            time.sleep(0.1)
+            credits = result.get('data', {}).get('store', {}).get('cart', {}).get('totals', {}).get('credits', {})
+            if credits:
+                log.info(f"   ✅ 信用点: {credits.get('amount', '?')}, max={credits.get('maxApplicable', '?')}")
+            else:
+                log.warning(f"   ⚠️ 信用点结果: {json.dumps(result, ensure_ascii=False)[:300]}")
         
         # 步骤3: NextStep (flow.moveNext)
         log.info("📍 [极速结账] NextStep...")
@@ -1369,3 +1394,100 @@ class RSIClient:
                 log.error(f"   ❌ 验证失败: {json.dumps(result, ensure_ascii=False)[:500]}")
         
         return False
+
+    def scan_all_skus(self, category: str = "extras/standalone-ships", progress_callback=None) -> list:
+        """扫描RSI商店全量SKU（通过浏览器导航+拦截器）
+        
+        Args:
+            category: 商店分类路径，如 "extras/standalone-ships", "ships"
+            progress_callback: 进度回调函数 callback(page_num, total_found)
+        Returns:
+            list of dict: [{name, sku_id, price, in_stock}, ...]
+        """
+        from .sku_interceptor import SKUInterceptor
+        
+        all_products = []
+        seen_sku_ids = set()
+        
+        # 导航到浏览页
+        base_url = f"https://robertsspaceindustries.com/en/store/pledge/browse/{category}"
+        
+        try:
+            log.info(f"📍 [SKU扫描] 开始扫描: {category}")
+            self.page.goto(base_url, wait_until="domcontentloaded", timeout=30000)
+            time.sleep(3)  # 等待GraphQL响应完成
+            
+            # 创建拦截器（不过滤关键词，收集所有商品）
+            interceptor = SKUInterceptor(self.page, keywords="", exclude_keywords="")
+            interceptor._register_interceptor()
+            
+            page_num = 1
+            while True:
+                # 等待页面渲染和GraphQL响应
+                time.sleep(3)
+                
+                # 收集当前拦截到的商品
+                products = interceptor.get_all_products()
+                new_count = 0
+                for p in products:
+                    if p['skuId'] not in seen_sku_ids:
+                        seen_sku_ids.add(p['skuId'])
+                        all_products.append({
+                            'name': p.get('name', ''),
+                            'sku_id': p['skuId'],
+                            'price': p.get('price', 0),
+                            'in_stock': p.get('inStock', False)
+                        })
+                        new_count += 1
+                
+                log.info(f"   📄 第{page_num}页: 新增{new_count}个, 累计{len(all_products)}个")
+                if progress_callback:
+                    try:
+                        progress_callback(page_num, len(all_products))
+                    except:
+                        pass
+                
+                # 尝试加载更多（滚动到底部触发懒加载）
+                try:
+                    # 检查是否有"Load More"按钮
+                    has_more = self.page.evaluate("""() => {
+                        const btn = document.querySelector('[class*="loadMore"], [class*="load-more"], button[class*="more"]');
+                        if (btn && btn.offsetParent !== null) return true;
+                        // 检查是否有滚动加载
+                        const scrollEl = document.querySelector('[class*="scroll"]');
+                        if (scrollEl) return scrollEl.scrollHeight > scrollEl.clientHeight;
+                        return false;
+                    }""")
+                    
+                    if not has_more:
+                        # 再尝试滚动页面到底部
+                        self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                        time.sleep(2)
+                        
+                        # 检查是否有新商品加载
+                        products_after = interceptor.get_all_products()
+                        new_after = sum(1 for p in products_after if p['skuId'] not in seen_sku_ids)
+                        if new_after == 0:
+                            log.info(f"   ✅ 扫描完成: 共{len(all_products)}个SKU")
+                            break
+                    else:
+                        # 点击加载更多
+                        self.page.evaluate("""() => {
+                            const btn = document.querySelector('[class*="loadMore"], [class*="load-more"], button[class*="more"]');
+                            if (btn) btn.click();
+                        }""")
+                        time.sleep(3)
+                    
+                except Exception as e:
+                    log.warning(f"   ⚠️ 翻页异常: {e}")
+                    break
+                
+                page_num += 1
+                if page_num > 20:  # 安全限制
+                    log.info(f"   ⚠️ 已达最大页数限制(20)")
+                    break
+            
+        except Exception as e:
+            log.error(f"   ❌ 扫描失败: {e}")
+        
+        return all_products
