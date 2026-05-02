@@ -1396,7 +1396,7 @@ class RSIClient:
         return False
 
     def scan_all_skus(self, category: str = "extras/standalone-ships", progress_callback=None) -> list:
-        """扫描RSI商店全量SKU（通过浏览器导航+拦截器）
+        """扫描RSI商店全量SKU（通过浏览器导航+拦截器，URL分页）
         
         Args:
             category: 商店分类路径，如 "extras/standalone-ships", "ships"
@@ -1409,24 +1409,36 @@ class RSIClient:
         all_products = []
         seen_sku_ids = set()
         
-        # 导航到浏览页
-        base_url = f"https://robertsspaceindustries.com/en/store/pledge/browse/{category}"
-        
         try:
             log.info(f"📍 [SKU扫描] 开始扫描: {category}")
-            self.page.goto(base_url, wait_until="domcontentloaded", timeout=30000)
-            time.sleep(3)  # 等待GraphQL响应完成
             
-            # 创建拦截器（不过滤关键词，收集所有商品）
+            # 先注册拦截器（必须在导航之前，否则错过首屏GraphQL响应）
             interceptor = SKUInterceptor(self.page, keywords="", exclude_keywords="")
             interceptor._register_interceptor()
             
+            # RSI商店用 ?page=N URL参数分页
+            base_url = f"https://robertsspaceindustries.com/en/store/pledge/browse/{category}"
+            
             page_num = 1
-            while True:
-                # 等待页面渲染和GraphQL响应
-                time.sleep(3)
+            max_pages = 20  # 安全限制
+            empty_pages = 0  # 连续空页计数
+            
+            while page_num <= max_pages:
+                # 构造分页URL
+                page_url = f"{base_url}?page={page_num}&sortField=price&sortDir=desc"
+                log.info(f"   📄 扫描第{page_num}页: {page_url}")
                 
-                # 收集当前拦截到的商品
+                # 导航到当前页
+                interceptor._products.clear()  # 清空拦截器缓冲，只收集当前页
+                self.page.goto(page_url, wait_until="domcontentloaded", timeout=30000)
+                
+                # 等待GraphQL响应
+                for wait_i in range(15):  # 最多等7.5秒
+                    time.sleep(0.5)
+                    if interceptor.get_all_products():
+                        break
+                
+                # 收集当前页拦截到的商品
                 products = interceptor.get_all_products()
                 new_count = 0
                 for p in products:
@@ -1440,52 +1452,28 @@ class RSIClient:
                         })
                         new_count += 1
                 
-                log.info(f"   📄 第{page_num}页: 新增{new_count}个, 累计{len(all_products)}个")
+                log.info(f"   📄 第{page_num}页: 拦截到{len(products)}个, 新增{new_count}个, 累计{len(all_products)}个")
                 if progress_callback:
                     try:
                         progress_callback(page_num, len(all_products))
                     except:
                         pass
                 
-                # 尝试加载更多（滚动到底部触发懒加载）
-                try:
-                    # 检查是否有"Load More"按钮
-                    has_more = self.page.evaluate("""() => {
-                        const btn = document.querySelector('[class*="loadMore"], [class*="load-more"], button[class*="more"]');
-                        if (btn && btn.offsetParent !== null) return true;
-                        // 检查是否有滚动加载
-                        const scrollEl = document.querySelector('[class*="scroll"]');
-                        if (scrollEl) return scrollEl.scrollHeight > scrollEl.clientHeight;
-                        return false;
-                    }""")
-                    
-                    if not has_more:
-                        # 再尝试滚动页面到底部
-                        self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                        time.sleep(2)
-                        
-                        # 检查是否有新商品加载
-                        products_after = interceptor.get_all_products()
-                        new_after = sum(1 for p in products_after if p['skuId'] not in seen_sku_ids)
-                        if new_after == 0:
-                            log.info(f"   ✅ 扫描完成: 共{len(all_products)}个SKU")
-                            break
-                    else:
-                        # 点击加载更多
-                        self.page.evaluate("""() => {
-                            const btn = document.querySelector('[class*="loadMore"], [class*="load-more"], button[class*="more"]');
-                            if (btn) btn.click();
-                        }""")
-                        time.sleep(3)
-                    
-                except Exception as e:
-                    log.warning(f"   ⚠️ 翻页异常: {e}")
-                    break
+                # 空页判断：当前页没有拦截到任何商品
+                if len(products) == 0:
+                    empty_pages += 1
+                    if empty_pages >= 2:
+                        log.info(f"   ✅ 连续{empty_pages}页无商品，扫描完成: 共{len(all_products)}个SKU")
+                        break
+                else:
+                    empty_pages = 0
                 
                 page_num += 1
-                if page_num > 20:  # 安全限制
-                    log.info(f"   ⚠️ 已达最大页数限制(20)")
-                    break
+            
+            if page_num > max_pages:
+                log.info(f"   ⚠️ 已达最大页数限制({max_pages})")
+            
+            log.info(f"   ✅ 扫描完成: 共{len(all_products)}个SKU")
             
         except Exception as e:
             log.error(f"   ❌ 扫描失败: {e}")
