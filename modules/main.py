@@ -385,30 +385,69 @@ def _run_playwright_thread(result_queue):
                     interceptor = SKUInterceptor(page, keywords, exclude_keywords)
                     log.info("   📍 SKU拦截器已注册，等待GraphQL响应...")
                 
-                # ===== T-10s 开始API加购轮询 =====
-                T_MINUS_10 = target - 10
-                
-                # 等待T-10
-                while time.time() - server_offset < T_MINUS_10:
-                    if gui and gui.is_cancel_clicked():
-                        log.info("⚠️ 用户取消抢购")
-                        if gui: gui.close_and_return_to_config()
-                        result_queue.put(("cancel", None))
-                        return
-                    server_offset = scheduler_direct.check_and_calibrate()
-                    time.sleep(0.01)
-                
-                log.info(f"   ⏰ T-10s 到达，开始API加购轮询...")
-                
-                # 确定使用的skuId
+                # ===== 按模式分两条路径 =====
+                cart_success = False
                 current_sku_id = sku_id
                 
-                # 如果使用关键词/刷新拦截，且还没拦截到skuId，则需要刷新页面拦截
-                if input_mode in ("intercept",) and not current_sku_id:
-                    log.info("   📍 刷新页面拦截skuId...")
-                    if gui: gui.update_status("刷新拦截skuId...", "cart")
+                if input_mode == "sku":
+                    # ===== SKU ID直购：T-10开始API加购轮询 =====
+                    T_MINUS_10 = target - 10
                     
-                    # 刷新页面
+                    # 等待T-10
+                    while time.time() - server_offset < T_MINUS_10:
+                        if gui and gui.is_cancel_clicked():
+                            log.info("⚠️ 用户取消抢购")
+                            if gui: gui.close_and_return_to_config()
+                            result_queue.put(("cancel", None))
+                            return
+                        server_offset = scheduler_direct.check_and_calibrate()
+                        time.sleep(0.01)
+                    
+                    log.info(f"   ⏰ T-10s 到达，SKU直购模式开始API加购轮询...")
+                    if gui: gui.update_status(f"API加购轮询 skuId={current_sku_id}...", "cart")
+                    
+                    # API加购轮询 T-10 ~ T+5
+                    while time.time() - server_offset < target + 5:
+                        if gui and gui.is_cancel_clicked():
+                            log.info("⚠️ 用户取消抢购")
+                            break
+                        
+                        success, error_code = client.api_add_to_cart(current_sku_id)
+                        
+                        if success:
+                            log.info("   ✅ API加购成功!")
+                            cart_success = True
+                            break
+                        
+                        if error_code == "OutOfStock":
+                            pass  # 静默继续
+                        elif error_code == "HTTP429":
+                            log.warning("   ⚠️ HTTP 429 (限流)，sleep 3秒...")
+                            time.sleep(3)
+                            continue
+                        elif error_code == "HTTP500":
+                            pass  # 静默继续
+                        else:
+                            log.warning(f"   ⚠️ 加购失败: {error_code}")
+                        
+                        time.sleep(0.5)
+                
+                else:
+                    # ===== 刷新拦截：等到T-0才刷新拦截 =====
+                    # 等待T-0
+                    while time.time() - server_offset < target:
+                        if gui and gui.is_cancel_clicked():
+                            log.info("⚠️ 用户取消抢购")
+                            if gui: gui.close_and_return_to_config()
+                            result_queue.put(("cancel", None))
+                            return
+                        server_offset = scheduler_direct.check_and_calibrate()
+                        time.sleep(0.01)
+                    
+                    log.info(f"   ⏰ T-0 到达，刷新拦截模式！")
+                    if gui: gui.update_status("T-0！刷新拦截skuId...", "cart")
+                    
+                    # 刷新页面拦截skuId
                     ts = time.time()
                     try:
                         page.reload(wait_until="domcontentloaded", timeout=10000)
@@ -421,13 +460,20 @@ def _run_playwright_thread(result_queue):
                     # 给拦截器一点时间收集数据
                     time.sleep(1.5)
                     
-                    # 检查是否拦截到skuId
+                    # 检查拦截结果
                     current_sku_id = interceptor.get_sku_id()
                     if current_sku_id:
-                        log.info(f"   🎯 拦截到skuId: {current_sku_id}")
-                        if gui: gui.update_status(f"拦截到skuId: {current_sku_id}", "cart")
+                        log.info(f"   🎯 拦截到skuId: {current_sku_id}，立刻API加购！")
+                        if gui: gui.update_status(f"拦截到skuId，API加购...", "cart")
+                        
+                        # 拿到skuId立刻API加购
+                        success, error_code = client.api_add_to_cart(current_sku_id)
+                        if success:
+                            log.info("   ✅ API加购成功!")
+                            cart_success = True
+                        else:
+                            log.warning(f"   ⚠️ 首次加购失败: {error_code}，继续轮询...")
                     else:
-                        # 显示拦截到的商品列表
                         products = interceptor.get_all_products()
                         if products:
                             log.info("   📦 拦截到的商品:")
@@ -435,61 +481,33 @@ def _run_playwright_thread(result_queue):
                                 log.info(f"      - {p['name']}: {p['skuId']} (inStock={p['inStock']})")
                         else:
                             log.warning("   ⚠️ 未拦截到任何商品信息")
-                
-                # ===== API加购轮询（T-10s ~ T+5s） =====
-                cart_success = False
-                poll_start = time.time()
-                poll_timeout = 15  # 15秒超时(T-10~T+5)
-                
-                while time.time() - server_offset < target + 3:
-                    # 检查是否到达T-0
-                    if time.time() - server_offset >= target:
-                        if not cart_success:
-                            log.info(f"   ⏰ T-0 到达，继续轮询...")
                     
-                    # 检查超时
-                    if time.time() - poll_start > poll_timeout:
-                        log.warning(f"   ⚠️ API轮询超时({poll_timeout}秒)")
-                        break
-                    
-                    # 如果已有skuId，执行API加购
-                    if current_sku_id:
-                        if gui: gui.update_status(f"API加购 skuId={current_sku_id[:8]}...", "cart")
-                        
-                        success, error_code = client.api_add_to_cart(current_sku_id)
-                        
-                        if success:
-                            log.info("   ✅ API加购成功!")
-                            cart_success = True
-                            break
-                        
-                        # 处理错误
-                        if error_code == "OutOfStock":
-                            log.warning(f"   ⚠️ OutOfStock，继续轮询...")
-                        elif error_code == "HTTP429":
-                            log.warning("   ⚠️ HTTP 429 (限流)，sleep 3秒...")
-                            time.sleep(3)
-                            continue
-                        elif error_code == "HTTP500":
-                            log.warning("   ⚠️ HTTP 500，继续下一次...")
-                        else:
-                            log.warning(f"   ⚠️ 加购失败: {error_code}")
-                    else:
-                        # 没有skuId无法API加购
-                        # 刷新拦截模式：尝试再次拦截
-                        if interceptor:
-                            new_sku = interceptor.get_sku_id()
-                            if new_sku:
-                                current_sku_id = new_sku
-                                log.info(f"   🎯 延迟拦截到skuId: {current_sku_id}")
-                                continue
-                        # SKU直购模式没填skuId → 跳出轮询走DOM
-                        log.warning("   ⚠️ 无skuId，无法API加购，等待DOM兜底...")
-                        if time.time() - server_offset >= target:
-                            break  # 已过T-0，提前退出走DOM
-                    
-                    # 0.5秒间隔
-                    time.sleep(0.5)
+                    # 首次加购失败或没拿到skuId，继续轮询到T+5
+                    if not cart_success:
+                        while time.time() - server_offset < target + 5:
+                            if gui and gui.is_cancel_clicked():
+                                log.info("⚠️ 用户取消抢购")
+                                break
+                            
+                            # 尝试再次拦截
+                            if not current_sku_id and interceptor:
+                                new_sku = interceptor.get_sku_id()
+                                if new_sku:
+                                    current_sku_id = new_sku
+                                    log.info(f"   🎯 延迟拦截到skuId: {current_sku_id}")
+                            
+                            if current_sku_id:
+                                success, error_code = client.api_add_to_cart(current_sku_id)
+                                if success:
+                                    log.info("   ✅ API加购成功!")
+                                    cart_success = True
+                                    break
+                                if error_code == "HTTP429":
+                                    log.warning("   ⚠️ HTTP 429 (限流)，sleep 3秒...")
+                                    time.sleep(3)
+                                    continue
+                            
+                            time.sleep(0.5)
                 
                 # ===== T+5s还没抢到，回退DOM加购 =====
                 if not cart_success:
