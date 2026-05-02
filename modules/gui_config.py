@@ -207,6 +207,157 @@ def _show_advanced_settings_dialog(parent, current_offset, current_proxy):
     return result
 
 
+
+# ============================================================
+# SKU收藏夹弹窗 (520x520)
+# ============================================================
+
+def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mode_change):
+    """显示SKU收藏夹弹窗，支持搜索和选择"""
+    import tkinter as tk
+    from .sku_bookmarks import load_bookmarks, remove_bookmark
+    
+    dialog = tk.Toplevel(parent)
+    dialog.title("📦 SKU收藏夹")
+    dialog.geometry("520x520")
+    dialog.attributes('-topmost', True)
+    dialog.transient(parent)
+    dialog.grab_set()
+    dialog.resizable(False, False)
+    dialog.configure(bg=GUI_BG_COLOR)
+    
+    # 标题
+    tk.Label(dialog, text="📦 SKU收藏夹", font=("Microsoft YaHei UI", 16, "bold"),
+             fg=GUI_TITLE_COLOR, bg=GUI_BG_COLOR).pack(pady=(15, 5))
+    
+    # 搜索栏
+    search_frame = tk.Frame(dialog, bg=GUI_BG_COLOR)
+    search_frame.pack(fill='x', padx=20, pady=(5, 10))
+    
+    tk.Label(search_frame, text="🔍", font=("Microsoft YaHei UI", 12),
+             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR).pack(side='left')
+    search_var = tk.StringVar()
+    search_entry = tk.Entry(search_frame, textvariable=search_var,
+                            font=("Microsoft YaHei UI", 11), width=30,
+                            bg="white", fg="black", insertbackground="black",
+                            relief='flat', bd=2)
+    search_entry.pack(side='left', padx=5, fill='x', expand=True)
+    
+    # 列表容器（用Canvas+Scrollbar实现滚动）
+    list_frame = tk.Frame(dialog, bg=GUI_BG_COLOR)
+    list_frame.pack(fill='both', expand=True, padx=20, pady=5)
+    
+    canvas = tk.Canvas(list_frame, bg="white", highlightthickness=0)
+    scrollbar = tk.Scrollbar(list_frame, orient="vertical", command=canvas.yview)
+    scrollable_frame = tk.Frame(canvas, bg="white")
+    
+    scrollable_frame.bind(
+        "<Configure>",
+        lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+    )
+    
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
+    
+    canvas.pack(side="left", fill="both", expand=True)
+    scrollbar.pack(side="right", fill="y")
+    
+    # 绑定鼠标滚轮
+    def _on_mousewheel(event):
+        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    
+    item_frames = []
+    
+    def refresh_list(*args):
+        """刷新列表"""
+        for f in item_frames:
+            f.destroy()
+        item_frames.clear()
+        
+        query = search_var.get().strip().lower()
+        bookmarks = load_bookmarks()
+        
+        for b in bookmarks:
+            name = b.get('name', 'Unknown')
+            sku_id = b.get('sku_id', '')
+            price = b.get('price', 0)
+            
+            # 搜索过滤
+            if query and query not in name.lower() and query not in str(sku_id):
+                continue
+            
+            # 每个条目
+            row = tk.Frame(scrollable_frame, bg="white", pady=3)
+            row.pack(fill='x', padx=5, pady=2)
+            item_frames.append(row)
+            
+            # 名称+SKU信息
+            info_frame = tk.Frame(row, bg="white")
+            info_frame.pack(side='left', fill='x', expand=True)
+            
+            tk.Label(info_frame, text=name, font=("Microsoft YaHei UI", 11, "bold"),
+                     fg="#1a3a5c", bg="white", anchor='w').pack(fill='x')
+            tk.Label(info_frame, text=f"SKU: {sku_id}  |  ${price}" if price else f"SKU: {sku_id}  |  价格未知",
+                     font=("Microsoft YaHei UI", 9), fg="#888888", bg="white", anchor='w').pack(fill='x')
+            
+            # 选择按钮
+            def _select(sid=sku_id, pr=price):
+                sku_entry.config(state='normal')
+                sku_entry.delete(0, tk.END)
+                sku_entry.insert(0, str(sid))
+                input_mode_var.set("sku")
+                on_mode_change("sku")
+                if pr and pr > 0:
+                    price_entry.delete(0, tk.END)
+                    price_entry.insert(0, str(int(pr)) if pr == int(pr) else str(pr))
+                dialog.destroy()
+            
+            tk.Button(row, text="选择", command=_select,
+                      font=("Microsoft YaHei UI", 9, "bold"),
+                      fg="white", bg="#6A8CBA", relief='flat',
+                      padx=10, pady=2, cursor='hand2').pack(side='right', padx=3)
+            
+            # 删除按钮
+            def _delete(sid=sku_id, r=row):
+                remove_bookmark(sid)
+                r.destroy()
+                item_frames.remove(r)
+            
+            tk.Button(row, text="✕", command=_delete,
+                      font=("Microsoft YaHei UI", 9),
+                      fg="white", bg="#9E6B7A", relief='flat',
+                      padx=5, pady=2, cursor='hand2').pack(side='right', padx=3)
+            
+            # 分隔线
+            sep = tk.Frame(scrollable_frame, bg="#E0E0E0", height=1)
+            sep.pack(fill='x', padx=10, pady=1)
+            item_frames.append(sep)
+        
+        if not bookmarks:
+            tk.Label(scrollable_frame, text="暂无收藏，拦截器获取SKU后自动保存",
+                     font=("Microsoft YaHei UI", 11), fg="#999999", bg="white").pack(pady=20)
+    
+    # 搜索触发
+    search_var.trace_add('write', refresh_list)
+    
+    # 初始加载
+    refresh_list()
+    
+    # 关闭按钮
+    tk.Button(dialog, text="关闭", command=dialog.destroy,
+              font=("Microsoft YaHei UI", 11, "bold"),
+              fg="white", bg="#9E6B7A", relief='flat',
+              padx=20, pady=5, cursor='hand2').pack(pady=10)
+    
+    def _on_close():
+        canvas.unbind_all("<MouseWheel>")
+        dialog.destroy()
+    
+    dialog.protocol("WM_DELETE_WINDOW", _on_close)
+    dialog.wait_window(dialog)
+
+
 # ============================================================
 # 配置对话框 (630x720)
 # ============================================================
@@ -592,32 +743,32 @@ def _show_config_dialog():
                               font=("Microsoft YaHei UI", 11),
                               fg="white", bg="#7B8FB7", relief='flat',
                               padx=18, pady=5, cursor='hand2')
-    advanced_btn.place(relx=0.38, y=555, anchor='n')
+    advanced_btn.place(relx=0.30, y=565, anchor='n')
     
     latency_btn = tk.Button(root, text="延迟测试", command=lambda: show_latency_dialog(root),
                               font=("Microsoft YaHei UI", 11),
                               fg="white", bg="#7B8FB7", relief='flat',
                               padx=18, pady=5, cursor='hand2')
-    latency_btn.place(relx=0.62, y=555, anchor='n')
+    latency_btn.place(relx=0.55, y=565, anchor='n')
     
     # ===== 按钮行 =====
     start_btn = tk.Button(root, text="开始抢购", command=lambda: None,
                           font=("Microsoft YaHei UI", 13, "bold"),
                           fg="white", bg="#6A8CBA", relief='flat',
                           padx=25, pady=10, cursor='hand2')
-    start_btn.place(relx=0.38, y=610, anchor='n')
+    start_btn.place(relx=0.38, y=625, anchor='n')
     
     cancel_btn = tk.Button(root, text="取消", command=lambda: None,
                            font=("Microsoft YaHei UI", 13, "bold"),
                            fg="white", bg="#9E6B7A", relief='flat',
                            padx=25, pady=10, cursor='hand2')
-    cancel_btn.place(relx=0.62, y=610, anchor='n')
+    cancel_btn.place(relx=0.62, y=625, anchor='n')
     
     # ===== 警告提示 =====
     warning_label = tk.Label(root, text="⚠️ 请提前清空购物车，登录好账号",
                             font=("Microsoft YaHei UI", 10),
                             fg="black", bg=CFG_BG_COLOR)
-    warning_label.place(relx=0.5, y=680, anchor='n')
+    warning_label.place(relx=0.5, y=700, anchor='n')
     
 
     
