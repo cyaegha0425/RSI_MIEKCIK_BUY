@@ -24,6 +24,10 @@ class RSIClient:
     def __init__(self, page):
         self.page = page
         self._page_alive = True
+        self.url = CFG["GRAPHQL_URL"]
+        self.billing_address_id = None  # 默认地址ID，可从API获取或hardcode
+        self.cart_data = {}
+        self.cart_total = 0.0  # 购物车总额
     
     def is_page_alive(self) -> bool:
         """检查page是否还活着（Edge没崩溃）"""
@@ -34,10 +38,6 @@ class RSIClient:
         except:
             self._page_alive = False
             return False
-        self.url = CFG["GRAPHQL_URL"]
-        self.billing_address_id = None  # 默认地址ID，可从API获取或hardcode
-        self.cart_data = {}
-        self.cart_total = 0.0  # 购物车总额
     
     def gql(self, operation_name: str, variables: Dict = None, return_headers: bool = False) -> Dict:
         """执行GraphQL请求（使用urllib，从浏览器取cookies）

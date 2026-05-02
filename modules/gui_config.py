@@ -188,7 +188,6 @@ def _show_advanced_settings_dialog(parent, current_offset, current_proxy, curren
                    activeforeground=GUI_TEXT_COLOR).pack(side='left', padx=5)
     
     # === 代理地址 ===
-    # === 代理地址 ===
     proxy_label_frame = tk.Frame(dialog, bg=GUI_BG_COLOR, padx=4, pady=1)
     proxy_label_frame.place(relx=0.5, y=220, anchor='n')
     tk.Label(proxy_label_frame, text="🌐 代理地址", font=("Microsoft YaHei UI", 14, "bold"),
