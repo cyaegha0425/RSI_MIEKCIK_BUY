@@ -4,7 +4,7 @@ REM RSI-AB Build Script
 
 echo ================================================
 echo   RSI-AB Build Script
-echo   MieMie TiDao HaoChuanLai V1.0.0
+echo   MieMie Kick! V3.0.0
 echo ================================================
 echo.
 
@@ -27,14 +27,14 @@ REM Clean previous builds
 echo [1/3] Cleaning previous builds...
 if exist "build" rmdir /s /q "build"
 if exist "dist" rmdir /s /q "dist"
-if exist "RSI_MIEBUY_V1.spec" del /q "RSI_MIEBUY_V1.spec"
+if exist "RSI_MIEKCIK_BUY.spec" del /q "RSI_MIEKCIK_BUY.spec"
 echo       Done.
 echo.
 
 echo [2/3] Building with PyInstaller...
 echo.
 
-python -m PyInstaller --onefile --windowed --icon=icon.ico --name "RSI_MIEBUY_V1" RSI_MIEBUY_V1.py
+python -m PyInstaller --onefile --windowed --icon=icon.ico --name "RSI_MIEKCIK_BUY" RSI_MIEKCIK_BUY.py
 
 if errorlevel 1 (
     echo.
@@ -53,10 +53,10 @@ copy /y "RSI_MIEBUY_Guide.txt" "dist\" >nul
 echo       Done.
 echo.
 
-if exist "dist\RSI_MIEBUY_V1.exe" (
+if exist "dist\RSI_MIEKCIK_BUY.exe" (
     echo ================================================
     echo   Build Complete!
-    echo   Output: dist\RSI_MIEBUY_V1.exe
+    echo   Output: dist\RSI_MIEKCIK_BUY.exe
     echo   Images: dist\images\
     echo ================================================
 ) else (
