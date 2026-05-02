@@ -589,7 +589,7 @@ class RSIClient:
     
 
     # Fiber调试开关：True时dump fiber树结构到日志(只dump一次后自动关闭)
-    FIBER_DUMP = True
+    FIBER_DUMP = False
 
     def get_sku_id_from_cards(self, keywords: str = "", exclude_keywords: str = "") -> str:
         """从卡片DOM的React fiber中提取skuId
@@ -651,7 +651,7 @@ class RSIClient:
                             if (!key.startsWith('__react')) continue;
                             try { const hits = searchAll(dumpCard[key], key, 0); if (hits.length > 0) { dumpResult.push('--- id/sku hits in ' + key + ' ---'); dumpResult.push(...hits.slice(0, 30)); } } catch(e) {}
                         }
-                        return { found: false, error: 'fiber_dump', dump: dumpResult.join('\n') };
+                        return { found: false, error: 'fiber_dump', dump: dumpResult.join(String.fromCharCode(10)) };
                     }
                     
                     for (const card of cards) {

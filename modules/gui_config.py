@@ -344,11 +344,56 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
     # 初始加载
     refresh_list()
     
-    # 关闭按钮
-    tk.Button(dialog, text="关闭", command=dialog.destroy,
+    # 手动添加区域
+    add_frame = tk.Frame(dialog, bg=GUI_BG_COLOR)
+    add_frame.pack(fill='x', padx=20, pady=(10, 5))
+    
+    tk.Label(add_frame, text="名称:", font=("Microsoft YaHei UI", 10),
+             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR).pack(side='left')
+    add_name_entry = tk.Entry(add_frame, font=("Microsoft YaHei UI", 10), width=10,
+                              bg="white", fg="black", insertbackground="black", relief='flat', bd=2)
+    add_name_entry.pack(side='left', padx=3)
+    
+    tk.Label(add_frame, text="SKU:", font=("Microsoft YaHei UI", 10),
+             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR).pack(side='left')
+    add_sku_entry = tk.Entry(add_frame, font=("Microsoft YaHei UI", 10), width=8,
+                             bg="white", fg="black", insertbackground="black", relief='flat', bd=2)
+    add_sku_entry.pack(side='left', padx=3)
+    
+    tk.Label(add_frame, text="价格$:", font=("Microsoft YaHei UI", 10),
+             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR).pack(side='left')
+    add_price_entry = tk.Entry(add_frame, font=("Microsoft YaHei UI", 10), width=6,
+                               bg="white", fg="black", insertbackground="black", relief='flat', bd=2)
+    add_price_entry.pack(side='left', padx=3)
+    
+    def _manual_add():
+        name = add_name_entry.get().strip()
+        sku = add_sku_entry.get().strip()
+        price_str = add_price_entry.get().strip()
+        if not name or not sku:
+            return
+        try:
+            price = float(price_str) if price_str else 0
+        except:
+            price = 0
+        add_bookmark(name, sku, price)
+        add_name_entry.delete(0, tk.END)
+        add_sku_entry.delete(0, tk.END)
+        add_price_entry.delete(0, tk.END)
+        refresh_list()
+    
+    tk.Button(add_frame, text="+添加", command=_manual_add,
+              font=("Microsoft YaHei UI", 9, "bold"),
+              fg="white", bg="#6A8CBA", relief='flat',
+              padx=8, pady=2, cursor='hand2').pack(side='left', padx=5)
+    
+    # 按钮行：关闭
+    btn_row = tk.Frame(dialog, bg=GUI_BG_COLOR)
+    btn_row.pack(pady=10)
+    tk.Button(btn_row, text="关闭", command=dialog.destroy,
               font=("Microsoft YaHei UI", 11, "bold"),
               fg="white", bg="#9E6B7A", relief='flat',
-              padx=20, pady=5, cursor='hand2').pack(pady=10)
+              padx=20, pady=5, cursor='hand2').pack(side='left')
     
     def _on_close():
         canvas.unbind_all("<MouseWheel>")
