@@ -766,8 +766,8 @@ def _show_config_dialog():
     price_entry = tk.Entry(price_row, font=("Microsoft YaHei UI", 11), width=22,
                            bg="white", fg="black", insertbackground="black",
                            relief='flat', bd=2)
-    saved_price = saved_config.get("item_price", "") if saved_config else ""
-    price_entry.insert(0, str(saved_price))
+    # 价格栏默认清空，只有从收藏夹选择才回填（避免信用点金额不匹配）
+    price_entry.insert(0, "")
     price_entry.pack(side='left', padx=5)
     
     # 排除关键词行
