@@ -483,6 +483,11 @@ def _run_playwright_thread(result_queue):
                             if interceptor_sku:
                                 current_sku_id = interceptor_sku
                                 log.info(f"   🎯 拦截器补充拿到skuId: {current_sku_id}")
+                                # 同时保存拦截器拿到的价格
+                                interceptor_price = interceptor.get_price()
+                                if interceptor_price > 0:
+                                    CFG["_INTERCEPTOR_PRICE"] = interceptor_price
+                                    log.info(f"   💰 拦截器价格: ${interceptor_price}")
                                 break
                         
                         time.sleep(0.5)

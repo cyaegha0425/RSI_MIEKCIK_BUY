@@ -522,11 +522,11 @@ class RSIClient:
         4. NextStep (flow.moveNext)
         5. 获取token/mark → validate
         """
-        # 步骤1: 使用加购时记录的SKU价格
+        # 步骤1: 获取商品价格（优先级：预设 > 拦截器 > DOM > 加购记录）
         log.info("📍 [极速结账] 开始结账...")
         total = self.cart_total
         if total <= 0:
-            # 尝试从预设价格获取
+            # 1. 预设价格
             from . import config
             preset_price = config.CFG.get("ITEM_PRICE", 0)
             if preset_price and preset_price > 0:
@@ -534,8 +534,26 @@ class RSIClient:
                 self.cart_total = total
                 log.info(f"   💰 使用预设价格: ${total}")
             else:
-                log.error("❌ 未获取到商品价格，无法结账")
-                return False
+                # 2. 拦截器价格
+                interceptor_price = config.CFG.get("_INTERCEPTOR_PRICE", 0)
+                if interceptor_price and interceptor_price > 0:
+                    total = float(interceptor_price)
+                    self.cart_total = total
+                    log.info(f"   💰 使用拦截器价格: ${total}")
+                else:
+                    # 3. 从页面DOM读取价格
+                    try:
+                        dom_price = self.page.evaluate("() => { const el = document.querySelector('.c-skuCard__price, .a-skuCard__price, [class*=price]'); return el ? parseFloat(el.textContent.replace(/[^0-9.]/g, '')) || 0 : 0; }")
+                        if dom_price and dom_price > 0:
+                            total = float(dom_price)
+                            self.cart_total = total
+                            log.info(f"   💰 使用DOM价格: ${total}")
+                    except:
+                        pass
+                    
+                    if total <= 0:
+                        log.error("❌ 未获取到商品价格，无法结账")
+                        return False
         log.info(f"   商品价格: ${total}")
         
         # 步骤2: 应用信用点 (credit_update)

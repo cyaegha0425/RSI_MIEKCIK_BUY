@@ -148,6 +148,19 @@ class SKUInterceptor:
         if in_stock is None:
             in_stock = resource.get('stockLevel', 'available') != 'none'
         
+        # 提取价格
+        price = 0
+        price_info = resource.get('price', {})
+        if isinstance(price_info, dict):
+            # price可能是分或元，RSI通常用分
+            amount = price_info.get('amount', 0)
+            if amount > 100:
+                price = amount / 100.0
+            else:
+                price = float(amount)
+        elif isinstance(price_info, (int, float)) and price_info > 0:
+            price = float(price_info) / 100.0 if price_info > 100 else float(price_info)
+        
         # 跳过无skuId或不在架的商品
         if not sku_id:
             return
@@ -162,7 +175,8 @@ class SKUInterceptor:
         product_info = {
             'name': name,
             'skuId': sku_id,
-            'inStock': in_stock
+            'inStock': in_stock,
+            'price': price
         }
         
         # 去重
@@ -200,6 +214,13 @@ class SKUInterceptor:
     def get_sku_id(self) -> Optional[str]:
         """获取拦截到的skuId"""
         return self._sku_id
+    
+    def get_price(self) -> float:
+        """获取匹配商品的价格"""
+        for p in self._products:
+            if p['skuId'] == self._sku_id:
+                return p.get('price', 0)
+        return 0
     
     def get_all_products(self) -> List[Dict]:
         """获取所有拦截到的商品列表"""
