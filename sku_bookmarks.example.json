@@ -10,9 +10,94 @@
     "price": 40
   },
   {
+    "name": "ATLS GEO",
+    "sku_id": "18024",
+    "price": 45
+  },
+  {
+    "name": "C8X Pisces Expedition",
+    "sku_id": "13285",
+    "price": 45
+  },
+  {
+    "name": "CSV-SM",
+    "sku_id": "17584",
+    "price": 45
+  },
+  {
+    "name": "Avenger Stalker",
+    "sku_id": "199",
+    "price": 60
+  },
+  {
+    "name": "Avenger Titan",
+    "sku_id": "16030",
+    "price": 60
+  },
+  {
+    "name": "C8R Pisces",
+    "sku_id": "15517",
+    "price": 65
+  },
+  {
     "name": "Arrow",
     "sku_id": "10417",
     "price": 75
+  },
+  {
+    "name": "Gladius",
+    "sku_id": "535",
+    "price": 90
+  },
+  {
+    "name": "Hawk",
+    "sku_id": "10830",
+    "price": 100
+  },
+  {
+    "name": "Centurion",
+    "sku_id": "15340",
+    "price": 110
+  },
+  {
+    "name": "Gladius Valiant",
+    "sku_id": "15827",
+    "price": 110
+  },
+  {
+    "name": "Ballista",
+    "sku_id": "11916",
+    "price": 140
+  },
+  {
+    "name": "F7C Hornet Mk II",
+    "sku_id": "16809",
+    "price": 175
+  },
+  {
+    "name": "Vanguard Hoplite",
+    "sku_id": "16122",
+    "price": 240
+  },
+  {
+    "name": "Mole",
+    "sku_id": "13293",
+    "price": 315
+  },
+  {
+    "name": "Valkyrie",
+    "sku_id": "9685",
+    "price": 375
+  },
+  {
+    "name": "Reclaimer",
+    "sku_id": "8058",
+    "price": 400
+  },
+  {
+    "name": "C2 Hercules",
+    "sku_id": "14563",
+    "price": 400
   },
   {
     "name": "Pioneer Warbond",
