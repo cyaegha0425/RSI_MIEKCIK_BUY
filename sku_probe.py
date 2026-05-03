@@ -40,7 +40,7 @@ def probe(keywords: str):
 
             # 先创建拦截器并注册（必须在goto之前，否则漏掉响应）
             interceptor = SKUInterceptor(page, keywords, "")
-            interceptor.reset_start_time()  # 注册page.on('response')
+            interceptor.register()  # 注册page.on('response')
             print(f"  📍 拦截器已注册，等待GraphQL响应...\n")
 
             # 构造带keywords的URL（触发SPA+GraphQL）

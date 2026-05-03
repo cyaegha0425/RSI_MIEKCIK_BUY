@@ -383,6 +383,7 @@ def _run_playwright_thread(result_queue):
                 interceptor = None
                 if input_mode in ("intercept",):
                     interceptor = SKUInterceptor(page, keywords, exclude_keywords)
+                    interceptor.register()  # 立即注册page.on('response')，不能等T-0才注册
                     log.info("   📍 SKU拦截器已注册，等待GraphQL响应...")
                 
                 # ===== 按模式分两条路径 =====

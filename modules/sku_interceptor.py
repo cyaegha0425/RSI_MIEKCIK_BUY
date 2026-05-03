@@ -43,13 +43,30 @@ class SKUInterceptor:
         self._sku_id = None
         self._intercepted = False
         self._raw_responses = []  # DEBUG: 原始GraphQL响应摘要
+        self._registered = False  # 拦截器是否已注册
+        self._keywords_pattern = None
+        self._exclude_pattern = None
     
+    def register(self):
+        """注册page.on('response')拦截器（只应调用一次）"""
+        if not self._registered:
+            self._compile_patterns()
+            self._register_interceptor()
+            self._registered = True
+        
     def reset_start_time(self):
         """Reset timing start point, call on page refresh"""
         self._start_time = time.time()
         log.info("   [计时] 计时起点已重置")
         
-        # 编译正则表达式
+        # 重新编译正则（关键词可能变化）
+        self._compile_patterns()
+        
+        # 如果还没注册过拦截器，现在注册
+        self.register()
+    
+    def _compile_patterns(self):
+        """编译关键词正则"""
         self._keywords_pattern = None
         if self.keywords:
             pattern = '|'.join(re.escape(k) for k in self.keywords)
@@ -59,9 +76,6 @@ class SKUInterceptor:
         if self.exclude_keywords:
             pattern = '|'.join(re.escape(k) for k in self.exclude_keywords)
             self._exclude_pattern = re.compile(pattern, re.IGNORECASE)
-        
-        # 注册拦截器
-        self._register_interceptor()
     
     def _register_interceptor(self):
         """注册response拦截器"""
