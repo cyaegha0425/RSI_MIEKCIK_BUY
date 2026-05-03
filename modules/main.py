@@ -687,6 +687,9 @@ def _run_playwright_thread(result_queue):
                 if success:
                     if gui: gui.show_result(True, f"总耗时 {total:.2f}秒")
                     config.notify("🎉 咩咩Kick！成功！", f"总耗时{total:.2f}秒")
+                    # 成功后后台跳转机库页面（不阻塞，失败也无所谓）
+                    try: page.goto("https://robertsspaceindustries.com/en/account/pledges", timeout=5000)
+                    except: pass
                 else:
                     if gui: gui.show_result(False, f"请检查页面")
                     config.notify("⚠️ 咩咩Kick！失败", "可能未成功，请检查页面")
