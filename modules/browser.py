@@ -113,6 +113,7 @@ def create_browser(p):
                 f"--user-data-dir={edge_profile}",
                 "--no-first-run",
                 "--disable-extensions",
+                "https://www.bing.com",  # 初始页面，避免白屏about:blank
             ]
             _edge_proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             
