@@ -23,6 +23,41 @@ log = config.log
 
 
 # ============================================================
+# 通用UI工具函数（模块级，供多个弹窗共用）
+# ============================================================
+
+def _show_tooltip(widget, text):
+    """显示tooltip提示"""
+    import tkinter as tk
+    def on_enter(event):
+        tooltip = tk.Toplevel(widget)
+        tooltip.wm_overrideredirect(True)
+        tooltip.attributes('-topmost', True)
+        x = widget.winfo_rootx() + 20
+        y = widget.winfo_rooty() + widget.winfo_height() + 5
+        tooltip.wm_geometry(f"+{x}+{y}")
+        label = tk.Label(tooltip, text=text, bg="#313244", fg="white",
+                         font=("Microsoft YaHei UI", 11), padx=12, pady=10,
+                         justify="left", relief="solid", borderwidth=1)
+        label.pack()
+    def on_leave(event):
+        for w in widget.winfo_children():
+            if isinstance(w, tk.Toplevel):
+                w.destroy()
+    widget.bind('<Enter>', on_enter)
+    widget.bind('<Leave>', on_leave)
+
+
+def _create_help_button(parent, help_text):
+    """创建❓帮助按钮"""
+    import tkinter as tk
+    btn = tk.Label(parent, text="❓", font=("Microsoft YaHei UI", 11),
+                  fg="#555555", bg=GUI_BG_COLOR, cursor='hand2')
+    _show_tooltip(btn, help_text)
+    return btn
+
+
+# ============================================================
 # 配置保存/加载函数
 # ============================================================
 
@@ -490,31 +525,7 @@ def _show_config_dialog():
     from tkinter import ttk
     from PIL import Image, ImageTk
     
-    # Tooltip 帮助函数
-    def _show_tooltip(widget, text):
-        def on_enter(event):
-            tooltip = tk.Toplevel(widget)
-            tooltip.wm_overrideredirect(True)
-            tooltip.attributes('-topmost', True)
-            x = widget.winfo_rootx() + 20
-            y = widget.winfo_rooty() + widget.winfo_height() + 5
-            tooltip.wm_geometry(f"+{x}+{y}")
-            label = tk.Label(tooltip, text=text, bg="#313244", fg="white",
-                             font=("Microsoft YaHei UI", 11), padx=12, pady=10,
-                             justify="left", relief="solid", borderwidth=1)
-            label.pack()
-        def on_leave(event):
-            for w in widget.winfo_children():
-                if isinstance(w, tk.Toplevel):
-                    w.destroy()
-        widget.bind('<Enter>', on_enter)
-        widget.bind('<Leave>', on_leave)
-    
-    def _create_help_button(parent, help_text):
-        btn = tk.Label(parent, text="❓", font=("Microsoft YaHei UI", 11),
-                      fg="#555555", bg=GUI_BG_COLOR, cursor='hand2')
-        _show_tooltip(btn, help_text)
-        return btn
+    # Tooltip/Help 函数已提取到模块级
     
     # 保存背景图引用，防止被GC回收
     bg_image_ref = [None]
