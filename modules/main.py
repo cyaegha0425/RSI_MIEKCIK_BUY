@@ -436,6 +436,7 @@ def _run_playwright_thread(result_queue):
                         server_offset = scheduler_direct.check_and_calibrate()
                         time.sleep(0.01)
                     
+                    attempt_start = time.time()  # SKU模式记录加购开始时间
                     log.info(f"   ⏰ T-10s 到达，SKU直购模式开始API加购轮询...")
                     if gui: gui.update_status(f"API加购轮询 skuId={current_sku_id}...", "cart")
                     
@@ -681,20 +682,35 @@ def _run_playwright_thread(result_queue):
                 else:
                     success = run_page_mode(page)
 
-                # 计算总耗时：拦截模式用T-0刷新时间，SKU模式用target
-                try:
-                    checkout_time = time.time() - t0_time
-                    total = time.time() - target
-                    log.info(f"\n📊 抢购耗时: {checkout_time:.2f}秒（从T-0刷新起算）| 总耗时: {total:.2f}秒")
-                except NameError:
-                    total = time.time() - target
-                    checkout_time = total
-                    log.info(f"\n📊 总耗时: {total:.2f}秒（从目标时间起算）")
+                # 计算总耗时
+                now = time.time()
+                if input_mode == "sku" and 'attempt_start' in dir():
+                    # SKU模式：从加购开始时间算，T-0之前完成显示"提前"
+                    checkout_time = now - attempt_start
+                    total = now - target
+                    if total < 0:
+                        log.info(f"\n📊 抢购耗时: {checkout_time:.2f}秒（从T-10起算）| 提前{-total:.2f}秒完成！")
+                        checkout_display = f"提前{-total:.2f}秒完成"
+                    else:
+                        log.info(f"\n📊 抢购耗时: {checkout_time:.2f}秒（从T-10起算）| 总耗时: {total:.2f}秒")
+                        checkout_display = f"抢购耗时 {checkout_time:.2f}秒"
+                else:
+                    # 拦截模式：从T-0刷新时间算
+                    try:
+                        checkout_time = now - t0_time
+                        total = now - target
+                        log.info(f"\n📊 抢购耗时: {checkout_time:.2f}秒（从T-0刷新起算）| 总耗时: {total:.2f}秒")
+                        checkout_display = f"抢购耗时 {checkout_time:.2f}秒"
+                    except NameError:
+                        total = now - target
+                        checkout_time = total
+                        log.info(f"\n📊 总耗时: {total:.2f}秒（从目标时间起算）")
+                        checkout_display = f"总耗时 {total:.2f}秒"
                 
                 # 显示结果（先弹窗，机库跳转用非阻塞方式）
                 if success:
-                    if gui: gui.show_result(True, f"抢购耗时 {checkout_time:.2f}秒")
-                    config.notify("🎉 咩咩Kick！成功！", f"总耗时{total:.2f}秒")
+                    if gui: gui.show_result(True, checkout_display)
+                    config.notify("🎉 咩咩Kick！成功！", checkout_display)
                     # 后台跳转机库（不阻塞，失败也无所谓）
                     try: page.evaluate("window.setTimeout(() => window.location.href = 'https://robertsspaceindustries.com/en/account/pledges', 100)")
                     except: pass
