@@ -325,12 +325,16 @@ query AddressBookQuery {
 # ============================================================
 
 os.makedirs(os.path.dirname(CFG["LOG_FILE"]), exist_ok=True)
+from logging.handlers import RotatingFileHandler
+_file_handler = RotatingFileHandler(
+    CFG["LOG_FILE"], maxBytes=5*1024*1024, backupCount=3, encoding='utf-8'
+)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s.%(msecs)03d %(message)s',
     datefmt='%H:%M:%S',
     handlers=[
-        logging.FileHandler(CFG["LOG_FILE"], encoding='utf-8'),
+        _file_handler,
         logging.StreamHandler(sys.stdout)
     ]
 )
