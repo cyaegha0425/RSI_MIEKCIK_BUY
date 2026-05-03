@@ -40,10 +40,21 @@ set_gui = config.set_gui
 
 def _run_playwright_thread(result_queue):
     """Playwright操作在独立线程中执行，避免与tkinter冲突"""
+    import sys as _sys_dbg
+    _crash_file = os.path.join(os.path.dirname(getattr(_sys_dbg, 'executable', __file__)), "crash.log") if getattr(_sys_dbg, 'frozen', False) else os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "crash.log")
+    def _write_crash(step, info=""):
+        try:
+            with open(_crash_file, "w", encoding="utf-8") as cf:
+                cf.write(f"CRASH at step: {step}\n{info}")
+        except: pass
     try:
+        _write_crash("1_start", "Playwright thread started")
         with sync_playwright() as p:
+            _write_crash("2_before_browser", "About to create browser")
             ctx = create_browser(p)
+            _write_crash("3_after_browser", "Browser created, about to new_page")
             page = ctx.new_page()
+            _write_crash("4_after_newpage", "Page created OK")
             
             # Playwright timeout单位是毫秒
             page.set_default_timeout(CFG["TIMEOUT"] * 1000)
