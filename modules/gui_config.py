@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-咩咩Kick! V3.0.1
+咩咩Kick! V3.0.2
 配置窗口模块 - 包含配置对话框、清空购物车弹窗、配置读写
 """
 
@@ -482,7 +482,7 @@ def _show_config_dialog():
     current_dt = datetime.now()
     
     root = tk.Tk()
-    root.title("咩咩蹄到好船来 V3.0.1 咩咩KICK！")
+    root.title("咩咩蹄到好船来 V3.0.2 咩咩KICK！")
     root.geometry("630x780")
     root.resizable(False, False)
     
@@ -502,7 +502,7 @@ def _show_config_dialog():
     CFG_BG_COLOR = GUI_BG_COLOR
     
     # ===== 标题 =====
-    title_label = tk.Label(root, text="咩咩蹄到好船来 V3.0.1 咩咩KICK！",
+    title_label = tk.Label(root, text="咩咩蹄到好船来 V3.0.2 咩咩KICK！",
                           font=("Microsoft YaHei UI", 20, "bold"),
                           fg=GUI_TITLE_COLOR, bg=CFG_BG_COLOR)
     title_label.place(relx=0.5, y=30, anchor='n')
@@ -838,6 +838,82 @@ def _show_config_dialog():
                               padx=18, pady=5, cursor='hand2')
     latency_btn.place(relx=0.62, y=565, anchor='n')
     
+    # 日志窗口按钮
+    def _open_log_window():
+        """打开实时日志窗口"""
+        log_win = tk.Toplevel(root)
+        log_win.title("📋 运行日志")
+        log_win.geometry("680x420")
+        log_win.configure(bg="#2d2d2d")
+        
+        text_widget = ScrolledText(log_win, wrap=tk.WORD, 
+                                    font=("Consolas", 9),
+                                    bg="#1e1e1e", fg="#d4d4d4",
+                                    insertbackground="white",
+                                    state='disabled')
+        text_widget.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # 底部按钮行
+        btn_frame = tk.Frame(log_win, bg="#2d2d2d")
+        btn_frame.pack(fill=tk.X, padx=5, pady=(0, 5))
+        
+        def _copy_all():
+            try:
+                log_win.clipboard_clear()
+                log_win.clipboard_append(text_widget.get("1.0", tk.END))
+            except:
+                pass
+        
+        def _clear_log():
+            text_widget.config(state='normal')
+            text_widget.delete("1.0", tk.END)
+            text_widget.config(state='disabled')
+        
+        tk.Button(btn_frame, text="📋 复制全部", command=_copy_all,
+                  font=("Microsoft YaHei UI", 9), fg="white", bg="#7B8FB7",
+                  relief='flat', padx=12, pady=3, cursor='hand2').pack(side='left', padx=3)
+        tk.Button(btn_frame, text="🗑️ 清空", command=_clear_log,
+                  font=("Microsoft YaHei UI", 9), fg="white", bg="#9E6B7A",
+                  relief='flat', padx=12, pady=3, cursor='hand2').pack(side='left', padx=3)
+        
+        _log_running = [True]
+        
+        def _poll_log():
+            if not _log_running[0]:
+                return
+            try:
+                log_q = config.get_log_queue()
+                msgs = []
+                while True:
+                    try:
+                        msgs.append(log_q.get_nowait())
+                    except:
+                        break
+                if msgs:
+                    text_widget.config(state='normal')
+                    for m in msgs:
+                        text_widget.insert(tk.END, m + "\n")
+                    text_widget.see(tk.END)  # 自动滚到底部
+                    text_widget.config(state='disabled')
+            except:
+                pass
+            if _log_running[0]:
+                log_win.after(200, _poll_log)
+        
+        _poll_log()
+        
+        def _on_close():
+            _log_running[0] = False
+            log_win.destroy()
+        
+        log_win.protocol("WM_DELETE_WINDOW", _on_close)
+    
+    log_btn = tk.Button(root, text="📋 日志", command=_open_log_window,
+                         font=("Microsoft YaHei UI", 11),
+                         fg="white", bg="#7B8FB7", relief='flat',
+                         padx=18, pady=5, cursor='hand2')
+    log_btn.place(relx=0.5, y=590, anchor='n')
+    
     # ===== 按钮行 =====
     start_btn = tk.Button(root, text="开始抢购", command=lambda: None,
                           font=("Microsoft YaHei UI", 13, "bold"),
@@ -860,7 +936,7 @@ def _show_config_dialog():
 
     
     # ===== 作者署名 =====
-    author_label = tk.Label(root, text="by 咩咩莉娅 V3.0.1",
+    author_label = tk.Label(root, text="by 咩咩莉娅 V3.0.2",
                             font=("Microsoft YaHei UI", 8),
                             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR)
     author_label.place(relx=1.0, rely=1.0, x=-5, y=-5, anchor='se')

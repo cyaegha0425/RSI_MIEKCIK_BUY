@@ -331,6 +331,27 @@ logging.basicConfig(
 )
 log = logging.getLogger()
 
+# GUI日志队列 - 日志窗口从这里读取
+import queue as _queue_mod
+_log_queue = _queue_mod.Queue(-1)  # 无限大小
+
+class _QueueLogHandler(logging.Handler):
+    """将日志推送到GUI队列的Handler"""
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            _log_queue.put_nowait(msg)
+        except:
+            pass
+
+_queue_handler = _QueueLogHandler()
+_queue_handler.setFormatter(logging.Formatter('%(asctime)s.%(msecs)03d %(message)s', datefmt='%H:%M:%S'))
+log.addHandler(_queue_handler)
+
+def get_log_queue():
+    """返回日志队列，供GUI日志窗口读取"""
+    return _log_queue
+
 # ============================================================
 # 工具函数
 # ============================================================
