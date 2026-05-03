@@ -39,6 +39,7 @@ setup(
             "language_level": "3",
             "boundscheck": False,
             "wraparound": False,
+            "annotation_typing": False,
         },
     ),
 )
