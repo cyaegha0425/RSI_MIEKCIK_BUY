@@ -162,7 +162,7 @@ def _show_clear_cart_dialog(gui, _clear_cart_event):
 # 高级设置弹窗 (570x450)
 # ============================================================
 
-def _show_advanced_settings_dialog(parent, current_manual_offset="", current_auto_calibrate=False, current_proxy=""):
+def _show_advanced_settings_dialog(parent, current_manual_offset="-0.1", current_auto_calibrate=False, current_proxy=""):
     """显示高级设置对话框"""
     import tkinter as tk
 
@@ -944,10 +944,11 @@ def _show_config_dialog():
                 pass
         if advanced_proxy.get():
             CFG["PROXY"] = advanced_proxy.get()
-        if manual_offset_var.get():
-            CFG["MANUAL_TIME_OFFSET"] = manual_offset_var.get()
+        CFG["MANUAL_TIME_OFFSET"] = manual_offset_var.get()
         
-        CFG["AUTO_CALIBRATE"] = auto_calibrate_var.get()
+        _auto_calib_val = auto_calibrate_var.get()
+        CFG["AUTO_CALIBRATE"] = bool(_auto_calib_val)
+        log.info(f"   [诊断] AUTO_CALIBRATE写入CFG: {CFG['AUTO_CALIBRATE']} (原始值={_auto_calib_val}, type={type(_auto_calib_val)})")
         
         result["continue"] = True
         root.destroy()

@@ -130,7 +130,8 @@ def _run_playwright_thread(result_queue):
                     except:
                         log.warning(f"   手动偏移格式错误: {manual_offset_str}")
                 
-                auto_calibrate = CFG.get("AUTO_CALIBRATE", False)
+                auto_calibrate = bool(CFG.get("AUTO_CALIBRATE", False))
+                log.info(f"   [诊断] AUTO_CALIBRATE={auto_calibrate} (原始={CFG.get('AUTO_CALIBRATE', 'MISSING')}, type={type(CFG.get('AUTO_CALIBRATE', 'MISSING'))})")
                 
                 # 计算距T-0剩余时间，决定校准策略（用原始目标时间，校准偏移尚未叠加）
                 _target_raw = config.get_target()
@@ -142,10 +143,10 @@ def _run_playwright_thread(result_queue):
                     server_offset = manual_offset if manual_offset != 0.0 else 0.0
                     CFG["SERVER_TIME_OFFSET"] = server_offset
                 elif not auto_calibrate:
-                    # 手动模式或自动校准未启用：跳过自动校准
+                    # ★ 自动校准未启用：跳过自动校准 ★
                     server_offset = manual_offset
                     CFG["SERVER_TIME_OFFSET"] = manual_offset
-                    log.info(f"   手动模式（自动校准未启用），偏移: {server_offset:+.3f}s")
+                    log.warning(f"   ⚠️ 自动校准未启用，跳过自动校准，使用手动偏移: {server_offset:+.3f}s")
                 elif time_to_target < 15:
                     # 距T-0不足15秒：快速校准（3次采样）或直接用手动偏移
                     if time_to_target < 8:
