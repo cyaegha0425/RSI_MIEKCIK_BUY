@@ -8,21 +8,20 @@ import os
 BOOKMARKS_FILE = os.path.join(os.path.dirname(__file__), '..', 'sku_bookmarks.json')
 
 def load_bookmarks():
-    """加载收藏的skuId列表"""
-    try:
-        with open(BOOKMARKS_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except:
-        # 如果bookmarks不存在，从example复制
+    """加载收藏的skuId列表，首次使用自动从example复制"""
+    if not os.path.exists(BOOKMARKS_FILE):
         import shutil
         example_file = os.path.join(os.path.dirname(__file__), '..', 'sku_bookmarks.example.json')
         if os.path.exists(example_file):
             try:
+                os.makedirs(os.path.dirname(BOOKMARKS_FILE), exist_ok=True)
                 shutil.copy2(example_file, BOOKMARKS_FILE)
-                with open(BOOKMARKS_FILE, 'r', encoding='utf-8') as f:
-                    return json.load(f)
             except:
                 pass
+    try:
+        with open(BOOKMARKS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
         return []
 
 def save_bookmarks(bookmarks):

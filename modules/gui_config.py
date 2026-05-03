@@ -239,7 +239,7 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
     """显示SKU收藏夹弹窗，支持搜索和选择"""
     import tkinter as tk
     from tkinter import messagebox
-    from .sku_bookmarks import load_bookmarks, remove_bookmark
+    from .sku_bookmarks import load_bookmarks, remove_bookmark, add_bookmark
     
     dialog = tk.Toplevel(parent)
     dialog.title("📦 SKU收藏夹")
@@ -295,7 +295,7 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
     # 绑定鼠标滚轮
     def _on_mousewheel(event):
         canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-    canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    canvas.bind("<MouseWheel>", _on_mousewheel)
     
     item_frames = []
     
@@ -348,13 +348,33 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
                       fg="white", bg="#6A8CBA", relief='flat',
                       padx=10, pady=2, cursor='hand2').pack(side='right', padx=3)
             
-            # 删除按钮(带确认)
+            # 删除按钮(带确认弹窗置顶)
             def _delete(sid=sku_id, r=row, bname=name):
-                if not messagebox.askyesno("确认删除", f"确定删除 {bname} (SKU:{sid})？"):
-                    return
-                remove_bookmark(sid)
-                r.destroy()
-                item_frames.remove(r)
+                confirm = tk.Toplevel(dialog)
+                confirm.title("确认删除")
+                confirm.geometry("300x120")
+                confirm.attributes('-topmost', True)
+                confirm.transient(dialog)
+                confirm.grab_set()
+                tk.Label(confirm, text=f"确定删除 {bname} (SKU:{sid})？",
+                         font=("Microsoft YaHei UI", 11), wraplength=260).pack(pady=15)
+                btn_f = tk.Frame(confirm)
+                btn_f.pack(pady=5)
+                def _do_delete():
+                    remove_bookmark(sid)
+                    r.destroy()
+                    if r in item_frames:
+                        item_frames.remove(r)
+                    confirm.destroy()
+                    refresh_list()
+                def _cancel_del():
+                    confirm.destroy()
+                tk.Button(btn_f, text="删除", command=_do_delete,
+                          font=("Microsoft YaHei UI", 10), fg="white", bg="#9E6B7A",
+                          relief='flat', padx=15, pady=3, cursor='hand2').pack(side='left', padx=10)
+                tk.Button(btn_f, text="取消", command=_cancel_del,
+                          font=("Microsoft YaHei UI", 10), fg="white", bg="#7B8FB7",
+                          relief='flat', padx=15, pady=3, cursor='hand2').pack(side='left', padx=10)
             
             tk.Button(row, text="✕", command=_delete,
                       font=("Microsoft YaHei UI", 9),
@@ -369,6 +389,10 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
         if not bookmarks:
             tk.Label(scrollable_frame, text="暂无收藏，拦截器获取SKU后自动保存",
                      font=("Microsoft YaHei UI", 11), fg="#999999", bg="white").pack(pady=20)
+        
+        # 搜索/刷新后更新canvas滚动区域
+        scrollable_frame.update_idletasks()
+        canvas.configure(scrollregion=canvas.bbox("all"))
     
     # 搜索触发
     search_var.trace_add('write', refresh_list)
@@ -838,81 +862,7 @@ def _show_config_dialog():
                               padx=18, pady=5, cursor='hand2')
     latency_btn.place(relx=0.62, y=565, anchor='n')
     
-    # 日志窗口按钮
-    def _open_log_window():
-        """打开实时日志窗口"""
-        log_win = tk.Toplevel(root)
-        log_win.title("📋 运行日志")
-        log_win.geometry("680x420")
-        log_win.configure(bg="#2d2d2d")
-        
-        text_widget = ScrolledText(log_win, wrap=tk.WORD, 
-                                    font=("Consolas", 9),
-                                    bg="#1e1e1e", fg="#d4d4d4",
-                                    insertbackground="white",
-                                    state='disabled')
-        text_widget.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
-        # 底部按钮行
-        btn_frame = tk.Frame(log_win, bg="#2d2d2d")
-        btn_frame.pack(fill=tk.X, padx=5, pady=(0, 5))
-        
-        def _copy_all():
-            try:
-                log_win.clipboard_clear()
-                log_win.clipboard_append(text_widget.get("1.0", tk.END))
-            except:
-                pass
-        
-        def _clear_log():
-            text_widget.config(state='normal')
-            text_widget.delete("1.0", tk.END)
-            text_widget.config(state='disabled')
-        
-        tk.Button(btn_frame, text="📋 复制全部", command=_copy_all,
-                  font=("Microsoft YaHei UI", 9), fg="white", bg="#7B8FB7",
-                  relief='flat', padx=12, pady=3, cursor='hand2').pack(side='left', padx=3)
-        tk.Button(btn_frame, text="🗑️ 清空", command=_clear_log,
-                  font=("Microsoft YaHei UI", 9), fg="white", bg="#9E6B7A",
-                  relief='flat', padx=12, pady=3, cursor='hand2').pack(side='left', padx=3)
-        
-        _log_running = [True]
-        
-        def _poll_log():
-            if not _log_running[0]:
-                return
-            try:
-                log_q = config.get_log_queue()
-                msgs = []
-                while True:
-                    try:
-                        msgs.append(log_q.get_nowait())
-                    except:
-                        break
-                if msgs:
-                    text_widget.config(state='normal')
-                    for m in msgs:
-                        text_widget.insert(tk.END, m + "\n")
-                    text_widget.see(tk.END)  # 自动滚到底部
-                    text_widget.config(state='disabled')
-            except:
-                pass
-            if _log_running[0]:
-                log_win.after(200, _poll_log)
-        
-        _poll_log()
-        
-        def _on_close():
-            _log_running[0] = False
-            log_win.destroy()
-        
-        log_win.protocol("WM_DELETE_WINDOW", _on_close)
-    
-    log_btn = tk.Button(root, text="📋 日志", command=_open_log_window,
-                         font=("Microsoft YaHei UI", 9),
-                         fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR, relief='flat',
-                         padx=8, pady=2, cursor='hand2', activeforeground="#6A8CBA")
-    log_btn.place(relx=0.0, rely=1.0, x=5, y=-5, anchor='sw')
+
     
     # ===== 按钮行 =====
     start_btn = tk.Button(root, text="开始抢购", command=lambda: None,
