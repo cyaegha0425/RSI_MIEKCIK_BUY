@@ -748,7 +748,12 @@ def _run_playwright_thread(result_queue):
                     log.error(f"\n❌ 异常: {e}")
                     print(tb_str)
                     try:
-                        crash_path = os.path.join(config.BASE_PATH, "crash.log")
+                        import sys as _sys_crash
+                        if getattr(_sys_crash, 'frozen', False):
+                            crash_dir = os.path.dirname(_sys_crash.executable)
+                        else:
+                            crash_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                        crash_path = os.path.join(crash_dir, "crash.log")
                         with open(crash_path, "w", encoding="utf-8") as cf:
                             cf.write(tb_str)
                     except: pass
@@ -769,7 +774,12 @@ def _run_playwright_thread(result_queue):
         print(tb_str)
         # 写crash.log确保闪退也能看到报错
         try:
-            crash_path = os.path.join(config.BASE_PATH, "crash.log")
+            import sys as _sys_crash
+            if getattr(_sys_crash, 'frozen', False):
+                crash_dir = os.path.dirname(_sys_crash.executable)
+            else:
+                crash_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            crash_path = os.path.join(crash_dir, "crash.log")
             with open(crash_path, "w", encoding="utf-8") as cf:
                 cf.write(tb_str)
         except:
