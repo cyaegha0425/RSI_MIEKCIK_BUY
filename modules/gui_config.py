@@ -292,10 +292,15 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
     
-    # 绑定鼠标滚轮
+    # 绑定鼠标滚轮（Enter/Leave方式，确保鼠标在子控件上也能滚动）
     def _on_mousewheel(event):
         canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-    canvas.bind("<MouseWheel>", _on_mousewheel)
+    def _on_enter(event):
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    def _on_leave(event):
+        canvas.unbind_all("<MouseWheel>")
+    canvas.bind("<Enter>", _on_enter)
+    canvas.bind("<Leave>", _on_leave)
     
     item_frames = []
     
@@ -446,7 +451,9 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
     # 关闭按钮
     def _on_close():
         try:
-            canvas.unbind("<MouseWheel>")
+            canvas.unbind_all("<MouseWheel>")
+            canvas.unbind("<Enter>")
+            canvas.unbind("<Leave>")
         except:
             pass
         dialog.destroy()
