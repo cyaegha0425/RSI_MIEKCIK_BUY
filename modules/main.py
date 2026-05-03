@@ -130,7 +130,6 @@ def _run_playwright_thread(result_queue):
                     except:
                         log.warning(f"   手动偏移格式错误: {manual_offset_str}")
                 
-                manual_only = CFG.get("MANUAL_ONLY", False)
                 auto_calibrate = CFG.get("AUTO_CALIBRATE", False)
                 
                 # 计算距T-0剩余时间，决定校准策略（用原始目标时间，校准偏移尚未叠加）
@@ -142,7 +141,7 @@ def _run_playwright_thread(result_queue):
                     log.warning(f"   ⚠️ T-0已过{abs(time_to_target):.1f}秒！跳过校准立即开抢")
                     server_offset = manual_offset if manual_offset != 0.0 else 0.0
                     CFG["SERVER_TIME_OFFSET"] = server_offset
-                elif manual_only or not auto_calibrate:
+                elif not auto_calibrate:
                     # 手动模式或自动校准未启用：跳过自动校准
                     server_offset = manual_offset
                     CFG["SERVER_TIME_OFFSET"] = manual_offset
@@ -172,7 +171,7 @@ def _run_playwright_thread(result_queue):
                         log.info(f"   叠加手动微调: {manual_offset:+.3f}s → 最终: {server_offset:+.3f}s")
                 
                 if gui: gui.update_step("calibrate", True)
-                if gui: gui.update_calibration(server_offset, is_manual=manual_only)
+                if gui: gui.update_calibration(server_offset, is_manual=True)
                 
                 # ===== 伏击模式分支 =====
                 if CFG.get("AMBUSH_MODE", False):

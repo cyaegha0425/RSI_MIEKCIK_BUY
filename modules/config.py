@@ -91,7 +91,7 @@ CFG = {
     "INPUT_MODE": "intercept",
     "SKU_ID": "",
     "MANUAL_TIME_OFFSET": "",
-    "MANUAL_ONLY": False,
+    "AUTO_CALIBRATE": False,
     "COOKIE_FILE": os.path.join(BASE_PATH, "scautobuy", "rsi_cookies.json"),
     "LOG_FILE": os.path.join(BASE_PATH, "scautobuy", "rsi_buy.log"),
     "SCREENSHOT_DIR": os.path.join(BASE_PATH, "scautobuy", "screenshots"),
