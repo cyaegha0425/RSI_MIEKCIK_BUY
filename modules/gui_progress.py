@@ -6,6 +6,7 @@ GUI进度界面模块
 """
 
 import os
+import queue
 import time
 from datetime import datetime
 
@@ -50,6 +51,7 @@ class RSIGUI:
         self.status_label = None
         self._gui_thread = None  # 保存GUI线程引用
         self._quit_requested = False  # 主线程请求退出标记
+        self._gui_queue = queue.Queue()  # GUI消息队列（线程安全）
         
         # 步骤定义 - V2.0.0 新流程
         self.steps = [
@@ -213,19 +215,29 @@ class RSIGUI:
             # 更新倒计时
             self._update_countdown()
             
-            # 定时检查主线程是否请求退出
-            def _check_quit():
+            # 合并的poll：处理GUI队列 + 检查退出
+            def _poll_queue():
                 if not self._running or self._quit_requested:
                     try:
                         self.root.quit()
                     except:
                         pass
                     return
+                # 批量处理queue中的所有消息
                 try:
-                    self.root.after(200, _check_quit)
+                    for _ in range(50):  # 每次最多处理50条，防止无限循环
+                        try:
+                            msg_type, msg_data = self._gui_queue.get_nowait()
+                        except queue.Empty:
+                            break
+                        self._handle_gui_message(msg_type, msg_data)
+                except Exception as e:
+                    print(f"GUI poll error: {e}")
+                try:
+                    self.root.after(50, _poll_queue)
                 except:
                     pass
-            self.root.after(200, _check_quit)
+            self.root.after(50, _poll_queue)
             
             self.root.mainloop()
         except Exception as e:
@@ -257,19 +269,106 @@ class RSIGUI:
         pass
     
     def close_and_return_to_config(self):
-        """关闭进度窗口，准备回配置界面（可能从子线程调用）"""
+        """关闭进度窗口，准备回配置界面（线程安全：通过queue）"""
         self._running = False
         self._cancel_clicked = True
-        self._result_confirmed = True  # 让Playwright线程不再等待
-        def _do_close():
-            try:
-                self.root.quit()  # 退出mainloop
-            except:
-                pass
+        self._result_confirmed = True
+        self._gui_queue.put(("quit", None))
+    
+    def _handle_gui_message(self, msg_type, msg_data):
+        """在主线程处理GUI消息（由_poll_queue调用）"""
         try:
-            self.root.after_idle(_do_close)
-        except:
-            _do_close()
+            if msg_type == "update_status":
+                status, key = msg_data
+                if self.status_label:
+                    self.status_label.config(text=f"\u23f3 {status}")
+                if key and key in self.step_labels:
+                    self.step_labels[key].config(text="\u25b6", fg="#f9e2af")
+            
+            elif msg_type == "update_step":
+                key, success = msg_data
+                icon = "\u2705" if success else "\u274c"
+                color = "#a6e3a1" if success else "#f38ba8"
+                if key in self.step_labels:
+                    self.step_labels[key].config(text=icon, fg=color)
+                keys = [k for k, _ in self.steps]
+                if key in keys:
+                    idx = keys.index(key)
+                    if idx + 1 < len(keys):
+                        next_key = keys[idx + 1]
+                        if next_key in self.step_labels:
+                            self.step_labels[next_key].config(text="\u23f3", fg=GUI_TEXT_COLOR)
+            
+            elif msg_type == "update_calibration":
+                offset, is_manual = msg_data
+                offset_text = f"+{offset:.3f}" if offset >= 0 else f"{offset:.3f}"
+                if self.status_label:
+                    if is_manual:
+                        self.status_label.config(text=f"\U0001f550 手动偏移: {offset_text}秒", fg="#89B4FA")
+                    else:
+                        self.status_label.config(text=f"\U0001f550 自动校准: {offset_text}秒", fg="#89B4FA")
+            
+            elif msg_type == "show_result":
+                success, msg = msg_data
+                self._result = success
+                if success:
+                    self.status_label.config(text="\U0001f389 好船来啦！不愧是我！", fg="#1a3a5c")
+                else:
+                    self.status_label.config(text="\u274c 咩失前蹄啦！", fg="#f38ba8")
+                self._show_result_dialog(success, msg)
+            
+            elif msg_type == "quit":
+                self._running = False
+                self._result_confirmed = True
+                try:
+                    self.root.quit()
+                except:
+                    pass
+            
+            elif msg_type == "clear_cart":
+                event = msg_data
+                self._show_clear_cart_dialog(event)
+        
+        except Exception as e:
+            print(f"GUI message handler error: {e}")
+    
+    def _show_clear_cart_dialog(self, event):
+        """在主线程显示清空购物车确认弹窗"""
+        try:
+            import tkinter as tk
+            dialog = tk.Toplevel(self.root)
+            dialog.title("\u26a0\ufe0f 清空购物车")
+            dialog.geometry("400x200")
+            dialog.attributes('-topmost', True)
+            dialog.transient(self.root)
+            dialog.grab_set()
+            
+            frame = tk.Frame(dialog, bg=GUI_BG_COLOR, padx=20, pady=20)
+            frame.pack(fill='both', expand=True)
+            
+            tk.Label(frame, text="请确认已清空购物车！", 
+                     font=("Microsoft YaHei UI", 12, "bold"),
+                     fg=GUI_TITLE_COLOR, bg=GUI_BG_COLOR).pack(pady=15)
+            
+            tk.Label(frame, text="购物车中有其他商品可能导致购买失败",
+                     font=("Microsoft YaHei UI", 9),
+                     fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR).pack(pady=5)
+            
+            def on_confirm():
+                event.set()
+                try:
+                    dialog.destroy()
+                except:
+                    pass
+            
+            tk.Button(frame, text="已清空，继续", font=("Microsoft YaHei UI", 10, "bold"),
+                      fg="white", bg="#7B8FB7", relief='flat', padx=20, pady=8,
+                      command=on_confirm).pack(pady=15)
+            
+            dialog.protocol("WM_DELETE_WINDOW", on_confirm)
+        except Exception as e:
+            print(f"清空购物车弹窗失败: {e}")
+            event.set()
     
     def _update_countdown(self):
         """更新倒计时显示"""
@@ -316,121 +415,28 @@ class RSIGUI:
             pass
     
     def update_status(self, status: str, key: str = None):
-        """更新当前状态（线程安全）"""
+        """更新当前状态（线程安全：通过queue）"""
         if not self.enabled or not self._running:
             return
-        
-        def _do_update():
-            try:
-                if self.status_label:
-                    self.status_label.config(text=f"⏳ {status}")
-                
-                # 更新步骤图标
-                if key and key in self.step_labels:
-                    self.step_labels[key].config(text="👉", fg="#f9e2af")
-                
-                self.root.update()
-            except:
-                pass
-        
-        try:
-            self.root.after_idle(_do_update)
-        except:
-            pass
+        self._gui_queue.put(("update_status", (status, key)))
     
     def update_step(self, key: str, success: bool):
-        """更新步骤状态（线程安全）"""
+        """更新步骤状态（线程安全：通过queue）"""
         if not self.enabled or not self._running:
             return
-        
-        def _do_update():
-            try:
-                icon = "✅" if success else "❌"
-                color = "#a6e3a1" if success else "#f38ba8"
-                
-                if key in self.step_labels:
-                    self.step_labels[key].config(text=icon, fg=color)
-                
-                # 激活下一步
-                keys = [k for k, _ in self.steps]
-                if key in keys:
-                    idx = keys.index(key)
-                    # 标记当前
-                    self.step_labels[key].config(text=icon, fg=color)
-                    # 高亮下一步
-                    if idx + 1 < len(keys):
-                        next_key = keys[idx + 1]
-                        if next_key in self.step_labels:
-                            self.step_labels[next_key].config(text="⏳", fg=GUI_TEXT_COLOR)
-                
-                self.root.update()
-            except:
-                pass
-        
-        try:
-            self.root.after_idle(_do_update)
-        except:
-            pass
+        self._gui_queue.put(("update_step", (key, success)))
     
     def update_calibration(self, offset: float, is_manual: bool = False):
-        """显示时间校准结果（线程安全）
-        
-        Args:
-            offset: 时间偏移（秒）
-            is_manual: 是否为手动设置的偏移
-        """
+        """显示时间校准结果（线程安全：通过queue）"""
         if not self.enabled:
             return
-        
-        def _do_update():
-            try:
-                # 格式化偏移
-                if offset >= 0:
-                    offset_text = f"+{offset:.3f}"
-                else:
-                    offset_text = f"{offset:.3f}"
-                
-                # 更新状态标签显示校准结果
-                if self.status_label:
-                    if is_manual:
-                        self.status_label.config(text=f"🕐 手动偏移: {offset_text}秒", fg="#89B4FA")
-                    else:
-                        self.status_label.config(text=f"🕐 自动校准: {offset_text}秒", fg="#89B4FA")
-                
-                self.root.update()
-            except:
-                pass
-        
-        try:
-            self.root.after_idle(_do_update)
-        except:
-            pass
+        self._gui_queue.put(("update_calibration", (offset, is_manual)))
     
     def show_result(self, success: bool, msg: str = None):
-        """显示结果弹窗（线程安全）"""
+        """显示结果弹窗（线程安全：通过queue）"""
         if not self.enabled:
             return
-        
-        self._result = success
-        # 不在这里设 _running=False，等用户点确定再设
-        
-        def _do_show():
-            try:
-                if success:
-                    self.status_label.config(text="🎉 好船来啦！不愧是我！", fg="#1a3a5c")
-                    self.update_status("🎉 好船来啦！不愧是我！")
-                else:
-                    self.status_label.config(text="❌ 咩失前蹄啦！", fg="#f38ba8")
-                
-                # 弹出结果窗口（点确定才关闭）
-                self._show_result_dialog(success, msg)
-            except:
-                pass
-        
-        try:
-            self.root.after_idle(_do_show)
-        except:
-            pass
+        self._gui_queue.put(("show_result", (success, msg)))
     
     def _show_result_dialog(self, success: bool, msg: str):
         """显示结果对话框"""
@@ -533,15 +539,7 @@ class RSIGUI:
             print(f"结果弹窗失败: {e}")
     
     def destroy(self):
-        """关闭GUI（可能从子线程调用）"""
+        """关闭GUI（线程安全：通过queue）"""
         if self.enabled and self._running:
             self._running = False
-            def _do_quit():
-                try:
-                    self.root.quit()
-                except:
-                    pass
-            try:
-                self.root.after_idle(_do_quit)
-            except:
-                _do_quit()
+            self._gui_queue.put(("quit", None))

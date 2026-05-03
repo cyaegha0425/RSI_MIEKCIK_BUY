@@ -17,7 +17,6 @@ from playwright.sync_api import sync_playwright
 from . import config
 from .browser import create_browser, login, run_api_mode, run_page_mode
 from .gui_progress import RSIGUI
-from .gui_config import _show_clear_cart_dialog
 from .api_client import RSIClient
 from .calibration import CalibrationScheduler
 from .sku_interceptor import SKUInterceptor
@@ -78,12 +77,11 @@ def _run_playwright_thread(result_queue):
                 log.info("   ✅ 页面已打开，等待抢购时间...")
                 if gui: gui.update_step("warmup", True)
 
-                # 清空购物车提醒（预热完成后、校准之前，避免T-0时卡弹窗）
+                # 清空购物车提醒（通过GUI queue在主线程创建弹窗，线程安全）
                 _clear_cart_event = threading.Event()
                 if gui and gui.enabled and not CFG.get("AMBUSH_MODE", False):
                     log.info("   ⏸️ 提醒用户清空购物车...")
-                    gui_dialog_thread = threading.Thread(target=_show_clear_cart_dialog, args=(gui, _clear_cart_event), daemon=True)
-                    gui_dialog_thread.start()
+                    gui._gui_queue.put(("clear_cart", _clear_cart_event))
                     _clear_cart_event.wait()
                     log.info("   ✅ 用户已确认清空购物车，重新加载页面...")
                     for _reload_attempt in range(3):
