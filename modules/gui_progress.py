@@ -281,13 +281,13 @@ class RSIGUI:
             if msg_type == "update_status":
                 status, key = msg_data
                 if self.status_label:
-                    self.status_label.config(text=f"\u23f3 {status}")
+                    self.status_label.config(text=f"⏳ {status}")
                 if key and key in self.step_labels:
-                    self.step_labels[key].config(text="\u25b6", fg="#f9e2af")
+                    self.step_labels[key].config(text="▶", fg="#f9e2af")
             
             elif msg_type == "update_step":
                 key, success = msg_data
-                icon = "\u2705" if success else "\u274c"
+                icon = "✅" if success else "❌"
                 color = "#a6e3a1" if success else "#f38ba8"
                 if key in self.step_labels:
                     self.step_labels[key].config(text=icon, fg=color)
@@ -297,24 +297,24 @@ class RSIGUI:
                     if idx + 1 < len(keys):
                         next_key = keys[idx + 1]
                         if next_key in self.step_labels:
-                            self.step_labels[next_key].config(text="\u23f3", fg=GUI_TEXT_COLOR)
+                            self.step_labels[next_key].config(text="⏳", fg=GUI_TEXT_COLOR)
             
             elif msg_type == "update_calibration":
                 offset, is_manual = msg_data
                 offset_text = f"+{offset:.3f}" if offset >= 0 else f"{offset:.3f}"
                 if self.status_label:
                     if is_manual:
-                        self.status_label.config(text=f"\U0001f550 手动偏移: {offset_text}秒", fg="#89B4FA")
+                        self.status_label.config(text=f"🕐 手动偏移: {offset_text}秒", fg="#89B4FA")
                     else:
-                        self.status_label.config(text=f"\U0001f550 自动校准: {offset_text}秒", fg="#89B4FA")
+                        self.status_label.config(text=f"🕐 自动校准: {offset_text}秒", fg="#89B4FA")
             
             elif msg_type == "show_result":
                 success, msg = msg_data
                 self._result = success
                 if success:
-                    self.status_label.config(text="\U0001f389 好船来啦！不愧是我！", fg="#1a3a5c")
+                    self.status_label.config(text="🎉 好船来啦！不愧是我！", fg="#1a3a5c")
                 else:
-                    self.status_label.config(text="\u274c 咩失前蹄啦！", fg="#f38ba8")
+                    self.status_label.config(text="❌ 咩失前蹄啦！", fg="#f38ba8")
                 self._show_result_dialog(success, msg)
             
             elif msg_type == "quit":
@@ -337,7 +337,7 @@ class RSIGUI:
         try:
             import tkinter as tk
             dialog = tk.Toplevel(self.root)
-            dialog.title("\u26a0\ufe0f 清空购物车")
+            dialog.title("⚠️ 清空购物车")
             dialog.geometry("400x200")
             dialog.attributes('-topmost', True)
             dialog.transient(self.root)
