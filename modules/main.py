@@ -125,7 +125,12 @@ def _run_playwright_thread(result_queue):
                 _target_raw = config.get_target()
                 time_to_target = _target_raw - time.time()
                 
-                if manual_only:
+                if time_to_target < 0:
+                    # T-0已过，跳过校准直接抢
+                    log.warning(f"   ⚠️ T-0已过{abs(time_to_target):.1f}秒！跳过校准立即开抢")
+                    server_offset = manual_offset if manual_offset != 0.0 else 0.0
+                    CFG["SERVER_TIME_OFFSET"] = server_offset
+                elif manual_only:
                     # 纯手动模式：跳过自动校准
                     server_offset = manual_offset
                     CFG["SERVER_TIME_OFFSET"] = manual_offset
