@@ -683,13 +683,10 @@ def _run_playwright_thread(result_queue):
                 total = time.time() - target
                 log.info(f"\n📊 总耗时: {total:.2f}秒（从目标时间起算）")
                 
-                # 显示结果
+                # 显示结果（先弹窗，跳转机库放后台不阻塞）
                 if success:
                     if gui: gui.show_result(True, f"总耗时 {total:.2f}秒")
                     config.notify("🎉 咩咩Kick！成功！", f"总耗时{total:.2f}秒")
-                    # 成功后跳转机库页面确认
-                    try: page.goto("https://robertsspaceindustries.com/en/account/pledges")
-                    except: pass
                 else:
                     if gui: gui.show_result(False, f"请检查页面")
                     config.notify("⚠️ 咩咩Kick！失败", "可能未成功，请检查页面")
