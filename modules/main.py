@@ -286,18 +286,19 @@ def _run_playwright_thread(result_queue):
                         log.info(f"🐑🐑🐑 {now} 伏击模式 T-0 开抢！")
                         if gui: gui.update_step("wait", True)
                         
+                        ambush_t0 = time.time()  # 伏击模式从T-0执行开始计时
                         if gui: gui.update_status("T-0 执行验证...", "checkout")
                         success = client.ambush_validate()
                         if gui: gui.update_step("checkout", success)
                         
-                        total = time.time() - target
-                        log.info(f"\n📊 总耗时: {total:.2f}秒（从目标时间起算）")
+                        checkout_time = time.time() - ambush_t0
+                        log.info(f"\n📊 伏击耗时: {checkout_time:.2f}秒（从T-0执行起算）")
                         
                         if success:
-                            if gui: gui.show_result(True, f"总耗时 {total:.2f}秒")
-                            config.notify("🎉 伏击成功！", f"总耗时{total:.2f}秒")
+                            if gui: gui.show_result(True, f"伏击耗时 {checkout_time:.2f}秒")
+                            config.notify("🎉 伏击成功！", f"伏击耗时{checkout_time:.2f}秒")
                         else:
-                            if gui: gui.show_result(False, f"总耗时 {total:.2f}秒")
+                            if gui: gui.show_result(False, f"伏击耗时 {checkout_time:.2f}秒")
                             config.notify("⚠️ 伏击失败", "请检查页面")
                         
                         result_queue.put(("success", success))

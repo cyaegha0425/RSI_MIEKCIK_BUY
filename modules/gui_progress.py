@@ -243,6 +243,12 @@ class RSIGUI:
             self._after_ids.append(self.root.after(50, _poll_queue))
             
             self.root.mainloop()
+            # mainloop退出后，清理残留after回调防止Tcl报invalid command
+            self._cancel_all_after()
+            try:
+                self.root.update()  # 让Tcl处理完残留事件
+            except:
+                pass
         except Exception as e:
             print(f"GUI启动失败: {e}")
             self.enabled = False
