@@ -946,9 +946,7 @@ def _show_config_dialog():
             CFG["PROXY"] = advanced_proxy.get()
         CFG["MANUAL_TIME_OFFSET"] = manual_offset_var.get()
         
-        _auto_calib_val = auto_calibrate_var.get()
-        CFG["AUTO_CALIBRATE"] = bool(_auto_calib_val)
-        log.info(f"   [诊断] AUTO_CALIBRATE写入CFG: {CFG['AUTO_CALIBRATE']} (原始值={_auto_calib_val}, type={type(_auto_calib_val)})")
+        CFG["AUTO_CALIBRATE"] = bool(auto_calibrate_var.get())
         
         result["continue"] = True
         root.destroy()

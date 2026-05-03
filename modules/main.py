@@ -131,7 +131,6 @@ def _run_playwright_thread(result_queue):
                         log.warning(f"   手动偏移格式错误: {manual_offset_str}")
                 
                 auto_calibrate = bool(CFG.get("AUTO_CALIBRATE", False))
-                log.info(f"   [诊断] AUTO_CALIBRATE={auto_calibrate} (原始={CFG.get('AUTO_CALIBRATE', 'MISSING')}, type={type(CFG.get('AUTO_CALIBRATE', 'MISSING'))})")
                 
                 # 计算距T-0剩余时间，决定校准策略（用原始目标时间，校准偏移尚未叠加）
                 _target_raw = config.get_target()

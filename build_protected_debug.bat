@@ -35,13 +35,14 @@ if errorlevel 1 (
 echo       PyInstaller OK.
 echo.
 
-REM Clean previous builds
-echo [1/4] Cleaning previous builds...
+REM Clean previous builds and caches
+echo [1/4] Cleaning previous builds and caches...
 if exist "build" rmdir /s /q "build"
 if exist "dist_debug" rmdir /s /q "dist_debug"
 if exist "RSI_MIEKCIK_BUY.spec" del /q "RSI_MIEKCIK_BUY.spec"
 del /q modules\*.pyd 2>nul
 del /q modules\*.c 2>nul
+if exist "modules\__pycache__" rmdir /s /q "modules\__pycache__"
 echo       Done.
 echo.
 
