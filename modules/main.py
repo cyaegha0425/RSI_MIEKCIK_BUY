@@ -85,7 +85,16 @@ def _run_playwright_thread(result_queue):
                     _clear_cart_event.wait()
                     log.info("   ✅ 用户已确认清空购物车，重新加载页面...")
                     for _reload_attempt in range(3):
-                        page.goto(CFG["BROWSE_URL_PREFIX"] + CFG["SEARCH_KEYWORDS"], wait_until="domcontentloaded", timeout=15000)
+                        try:
+                            page.goto(CFG["BROWSE_URL_PREFIX"] + CFG["SEARCH_KEYWORDS"], wait_until="domcontentloaded", timeout=15000)
+                        except Exception as _nav_err:
+                            log.warning(f"   ⚠️ 页面导航冲突: {_nav_err}")
+                            # 被重定向到cart等情况，重新导航
+                            time.sleep(0.5)
+                            try:
+                                page.goto(CFG["BROWSE_URL_PREFIX"] + CFG["SEARCH_KEYWORDS"], wait_until="domcontentloaded", timeout=15000)
+                            except:
+                                pass
                         time.sleep(1)
                         cur_url = page.url
                         if cur_url and cur_url != "about:blank" and cur_url != "about:blank#":
