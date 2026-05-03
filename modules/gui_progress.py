@@ -136,6 +136,83 @@ class RSIGUI:
             )
             subtitle_label.place(relx=0.5, y=45, anchor='n')
             
+            # ===== 日志窗口按钮（左下角） =====
+            def _open_log_window():
+                """打开实时日志窗口"""
+                log_win = tk.Toplevel(self.root)
+                log_win.title("📋 运行日志")
+                log_win.geometry("680x420")
+                log_win.configure(bg="#2d2d2d")
+                log_win.attributes('-topmost', True)
+                
+                from tkinter.scrolledtext import ScrolledText
+                text_widget = ScrolledText(log_win, wrap=tk.WORD,
+                                            font=("Consolas", 9),
+                                            bg="#1e1e1e", fg="#d4d4d4",
+                                            insertbackground="white",
+                                            state='disabled')
+                text_widget.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+                
+                btn_frame = tk.Frame(log_win, bg="#2d2d2d")
+                btn_frame.pack(fill=tk.X, padx=5, pady=(0, 5))
+                
+                def _copy_all():
+                    try:
+                        log_win.clipboard_clear()
+                        log_win.clipboard_append(text_widget.get("1.0", tk.END))
+                    except:
+                        pass
+                
+                def _clear_log():
+                    text_widget.config(state='normal')
+                    text_widget.delete("1.0", tk.END)
+                    text_widget.config(state='disabled')
+                
+                tk.Button(btn_frame, text="📋 复制全部", command=_copy_all,
+                          font=("Microsoft YaHei UI", 9), fg="white", bg="#7B8FB7",
+                          relief='flat', padx=12, pady=3, cursor='hand2').pack(side='left', padx=3)
+                tk.Button(btn_frame, text="🗑️ 清空", command=_clear_log,
+                          font=("Microsoft YaHei UI", 9), fg="white", bg="#9E6B7A",
+                          relief='flat', padx=12, pady=3, cursor='hand2').pack(side='left', padx=3)
+                
+                _log_win_running = [True]
+                
+                def _poll_log():
+                    if not _log_win_running[0]:
+                        return
+                    try:
+                        log_q = config.get_log_queue()
+                        msgs = []
+                        while True:
+                            try:
+                                msgs.append(log_q.get_nowait())
+                            except:
+                                break
+                        if msgs:
+                            text_widget.config(state='normal')
+                            for m in msgs:
+                                text_widget.insert(tk.END, m + "\n")
+                            text_widget.see(tk.END)
+                            text_widget.config(state='disabled')
+                    except:
+                        pass
+                    if _log_win_running[0]:
+                        log_win.after(200, _poll_log)
+                
+                _poll_log()
+                
+                def _on_log_close():
+                    _log_win_running[0] = False
+                    log_win.destroy()
+                
+                log_win.protocol("WM_DELETE_WINDOW", _on_log_close)
+            
+            log_btn = tk.Button(self.root, text="📋 日志", command=_open_log_window,
+                                 font=("Microsoft YaHei UI", 9),
+                                 fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR, relief='flat',
+                                 padx=8, pady=2, cursor='hand2', activeforeground="#6A8CBA")
+            log_btn.place(relx=0.0, rely=1.0, x=5, y=-5, anchor='sw')
+            
             # ===== 作者署名（右下角，使用背景色无底色） =====
             author_label = tk.Label(
                 self.root, text="by 咩咩莉娅",

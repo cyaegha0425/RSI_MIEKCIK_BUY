@@ -447,13 +447,16 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
     btn_row = tk.Frame(dialog, bg=GUI_BG_COLOR)
     btn_row.pack(pady=10)
     
-    tk.Button(btn_row, text="关闭", command=dialog.destroy,
+    tk.Button(btn_row, text="关闭", command=_on_close,
               font=("Microsoft YaHei UI", 11, "bold"),
               fg="white", bg="#9E6B7A", relief='flat',
               padx=20, pady=5, cursor='hand2').pack(side='left', padx=5)
     
     def _on_close():
-        canvas.unbind_all("<MouseWheel>")
+        try:
+            canvas.unbind("<MouseWheel>")
+        except:
+            pass
         dialog.destroy()
     
     dialog.protocol("WM_DELETE_WINDOW", _on_close)
