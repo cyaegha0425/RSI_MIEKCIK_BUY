@@ -194,8 +194,7 @@ def _run_playwright_thread(result_queue):
                         return
                     
                     # b. 根据剩余时间决定伏击模式策略
-                    time_offset = CFG.get("TIME_OFFSET", 0)
-                    target = config.get_target() + time_offset
+                    target = config.get_target()
                     now_ts = time.time()
                     ambush_start = target - 30  # T-30秒开始预装填
                     server_offset = CFG.get("SERVER_TIME_OFFSET", 0)
@@ -410,11 +409,7 @@ def _run_playwright_thread(result_queue):
                 
                 log.info(f"📍 [V3.0.4 正面硬刚] 输入模式={input_mode}, skuId={sku_id or '无'}, 关键词={keywords or '无'}")
                 
-                time_offset = CFG.get("TIME_OFFSET", 0)
-                if time_offset:
-                    log.info(f"   手动时间偏移: {time_offset}s")
-                
-                target = config.get_target() + time_offset
+                target = config.get_target()
                 # 复用启动时的调度器（已含初始校准）
                 scheduler_direct = CalibrationScheduler(client, target, server_offset=server_offset) if CFG.get("AUTO_CALIBRATE", False) else None
                 

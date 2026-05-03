@@ -849,7 +849,6 @@ def _show_config_dialog():
     # ===== 高级设置 =====
     
     # 高级设置变量
-    advanced_offset = tk.StringVar(value=str(saved_config.get("time_offset", CFG["TIME_OFFSET"]) if saved_config else CFG["TIME_OFFSET"]))
     advanced_proxy = tk.StringVar(value=saved_config.get("proxy", CFG["PROXY"]) if saved_config else (CFG["PROXY"] or ""))
     
     def _open_advanced_settings():
@@ -909,7 +908,6 @@ def _show_config_dialog():
             "search_keywords": search_entry.get().strip(),
             "exclude_keywords": exclude_entry.get(),
                 "item_price": price_entry.get().strip(),
-            "time_offset": advanced_offset.get(),
             "proxy": advanced_proxy.get(),
             "sku_id": sku_entry.get().strip(),
             "input_mode": input_mode_var.get(),
@@ -937,11 +935,6 @@ def _show_config_dialog():
             messagebox.showwarning("⚠️ 价格未填写", "SKU ID模式必须准确填写对应信用点价格才可正常使用！\n价格错误造成的一切后果自负")
             return
         
-        if advanced_offset.get():
-            try:
-                CFG["TIME_OFFSET"] = float(advanced_offset.get())
-            except:
-                pass
         if advanced_proxy.get():
             CFG["PROXY"] = advanced_proxy.get()
         CFG["MANUAL_TIME_OFFSET"] = manual_offset_var.get()

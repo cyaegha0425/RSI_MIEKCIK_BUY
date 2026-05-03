@@ -63,7 +63,6 @@ def get_args():
 CFG = {
     "TARGET_TIME": "2026-05-15 00:00:00",
     "TIMEZONE": "Asia/Shanghai",
-    "TIME_OFFSET": 0,  # 手动时间偏移(秒)，网络延迟约0.073s+buffer=提前0.2秒
     
     # 列表页浏览URL前缀（搜索关键词拼接在后面）
     "BROWSE_URL_PREFIX": "https://robertsspaceindustries.com/en/store/pledge/browse/extras/standalone-ships?page=1&sortField=price&sortDir=desc&keywords=",
