@@ -1383,8 +1383,9 @@ class RSIClient:
             if validate_result or order_slug:
                 order_num = order_slug or validate_result
                 log.info(f"   🎉 付款成功! 订单号: {order_num}")
+                # 机库跳转用JS非阻塞，避免阻塞弹窗显示
                 try:
-                    self.page.goto("https://robertsspaceindustries.com/en/account/pledges", timeout=10000)
+                    self.page.evaluate("window.setTimeout(() => window.location.href = 'https://robertsspaceindustries.com/en/account/pledges', 100)")
                 except:
                     pass
                 return True
