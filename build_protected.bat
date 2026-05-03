@@ -70,7 +70,7 @@ echo.
 
 REM PyInstaller build
 echo [3/4] Building with PyInstaller...
-python -m PyInstaller --onefile --windowed --icon=icon.ico --name "RSI_MIEKCIK_BUY" RSI_MIEKCIK_BUY.py
+python -m PyInstaller --onefile --windowed --icon=icon.ico --hidden-import=logging.handlers --name "RSI_MIEKCIK_BUY" RSI_MIEKCIK_BUY.py
 if errorlevel 1 (
     echo.
     echo [ERROR] PyInstaller build failed!

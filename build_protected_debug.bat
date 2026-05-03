@@ -69,7 +69,7 @@ echo.
 
 REM PyInstaller build (NO --windowed, console stays open for debug)
 echo [3/4] Building with PyInstaller (console mode)...
-python -m PyInstaller --onefile --icon=icon.ico --name "RSI_MIEKCIK_BUY" --distpath dist_debug RSI_MIEKCIK_BUY.py
+python -m PyInstaller --onefile --icon=icon.ico --hidden-import=logging.handlers --name "RSI_MIEKCIK_BUY" --distpath dist_debug RSI_MIEKCIK_BUY.py
 if errorlevel 1 (
     echo.
     echo [ERROR] PyInstaller build failed!
