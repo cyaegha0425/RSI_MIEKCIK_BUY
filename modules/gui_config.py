@@ -878,12 +878,6 @@ def _show_config_dialog():
                               padx=18, pady=5, cursor='hand2')
     advanced_btn.place(relx=0.38, y=565, anchor='n')
     
-    latency_btn = tk.Button(root, text="延迟测试", command=lambda: show_latency_dialog(root),
-                              font=("Microsoft YaHei UI", 11),
-                              fg="white", bg="#7B8FB7", relief='flat',
-                              padx=18, pady=5, cursor='hand2')
-    latency_btn.place(relx=0.62, y=565, anchor='n')
-    
 
     
     # ===== 按钮行 =====
