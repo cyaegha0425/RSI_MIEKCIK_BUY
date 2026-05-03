@@ -29,7 +29,7 @@ def _show_disclaimer():
     
     dialog = tk.Toplevel(root)
     dialog.title("免责声明")
-    dialog.geometry("460x420")
+    dialog.geometry("460x500")
     dialog.resizable(False, False)
     dialog.configure(bg="#f5f5f5")
     dialog.grab_set()
@@ -38,7 +38,7 @@ def _show_disclaimer():
     # 居中
     dialog.update_idletasks()
     x = (dialog.winfo_screenwidth() - 460) // 2
-    y = (dialog.winfo_screenheight() - 420) // 2
+    y = (dialog.winfo_screenheight() - 500) // 2
     dialog.geometry(f"+{x}+{y}")
     
     # 标题
