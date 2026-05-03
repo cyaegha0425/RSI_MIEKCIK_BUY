@@ -567,12 +567,23 @@ def _show_config_dialog():
             update_hint_text()
             update_label_colors(new_pos)
     
+    # 伏击模式相关widget的y坐标映射
+    _ambush_widget_positions = {}
+    
     def update_hint_text():
-        """更新提示文字"""
-        if ambush_mode_var.get():
+        """更新提示文字和输入区域可见性"""
+        is_ambush = ambush_mode_var.get()
+        if is_ambush:
             mode_hint.config(text="💡 请确认想要的船已加入购物车")
         else:
             mode_hint.config(text="💡 从0开始加船，开抢瞬间加购+结账")
+        # 伏击模式隐藏输入方式/SKU/搜索/价格/排除行
+        if _ambush_widget_positions:
+            for widget, pos in _ambush_widget_positions.items():
+                if is_ambush:
+                    widget.place_forget()
+                else:
+                    widget.place(**pos)
     
     def update_label_colors(pos):
         """更新左右标签的样式"""
@@ -791,6 +802,17 @@ def _show_config_dialog():
     exclude_entry.insert(0, saved_config.get("exclude_keywords", CFG["EXCLUDE_KEYWORDS"]) if saved_config else CFG["EXCLUDE_KEYWORDS"])
     exclude_entry.pack(side='left', padx=5)
     
+    # 注册伏击模式控制的widget及其位置
+    _ambush_widget_positions.update({
+        input_mode_frame: {"relx": 0.5, "y": 340, "anchor": "n"},
+        sku_row: {"relx": 0.5, "y": 380, "anchor": "n"},
+        search_row: {"relx": 0.5, "y": 420, "anchor": "n"},
+        price_row: {"relx": 0.5, "y": 460, "anchor": "n"},
+        exclude_row: {"relx": 0.5, "y": 500, "anchor": "n"},
+    })
+    # 首次应用伏击模式UI状态
+    update_hint_text()
+    
     # ===== 高级设置+延迟测试 =====
     
     # 高级设置变量
@@ -881,8 +903,8 @@ def _show_config_dialog():
         CFG["SKU_ID"] = sku_entry.get().strip()
         CFG["INPUT_MODE"] = input_mode_var.get()
         
-        # SKU直购模式必须填写价格
-        if input_mode_var.get() == "sku" and CFG["ITEM_PRICE"] <= 0:
+        # SKU直购模式必须填写价格（伏击模式跳过）
+        if not CFG["AMBUSH_MODE"] and input_mode_var.get() == "sku" and CFG["ITEM_PRICE"] <= 0:
             from tkinter import messagebox
             messagebox.showwarning("⚠️ 价格未填写", "SKU ID模式必须准确填写对应信用点价格才可正常使用！\n价格错误造成的一切后果自负")
             return
