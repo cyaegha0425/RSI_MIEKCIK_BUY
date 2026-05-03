@@ -12,7 +12,6 @@ import threading
 from datetime import datetime
 
 from . import config
-from .latency_test import show_latency_dialog
 
 # 导入config中的常量
 CFG = config.CFG
@@ -859,7 +858,7 @@ def _show_config_dialog():
     # 首次应用伏击模式UI状态
     update_hint_text()
     
-    # ===== 高级设置+延迟测试 =====
+    # ===== 高级设置 =====
     
     # 高级设置变量
     advanced_offset = tk.StringVar(value=str(saved_config.get("time_offset", CFG["TIME_OFFSET"]) if saved_config else CFG["TIME_OFFSET"]))
