@@ -121,8 +121,9 @@ def _run_playwright_thread(result_queue):
                 
                 manual_only = CFG.get("MANUAL_ONLY", False)
                 
-                # 计算距T-0剩余时间，决定校准策略
-                time_to_target = target - time.time()
+                # 计算距T-0剩余时间，决定校准策略（用原始目标时间，校准偏移尚未叠加）
+                _target_raw = config.get_target()
+                time_to_target = _target_raw - time.time()
                 
                 if manual_only:
                     # 纯手动模式：跳过自动校准
