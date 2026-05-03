@@ -909,10 +909,10 @@ def _show_config_dialog():
         log_win.protocol("WM_DELETE_WINDOW", _on_close)
     
     log_btn = tk.Button(root, text="📋 日志", command=_open_log_window,
-                         font=("Microsoft YaHei UI", 11),
-                         fg="white", bg="#7B8FB7", relief='flat',
-                         padx=18, pady=5, cursor='hand2')
-    log_btn.place(relx=0.5, y=590, anchor='n')
+                         font=("Microsoft YaHei UI", 9),
+                         fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR, relief='flat',
+                         padx=8, pady=2, cursor='hand2', activeforeground="#6A8CBA")
+    log_btn.place(relx=0.0, rely=1.0, x=5, y=-5, anchor='sw')
     
     # ===== 按钮行 =====
     start_btn = tk.Button(root, text="开始抢购", command=lambda: None,
