@@ -133,7 +133,7 @@ def _show_advanced_settings_dialog(parent, current_offset, current_proxy, curren
     
     dialog = tk.Toplevel(parent)
     dialog.title("高级设置")
-    dialog.geometry("570x520")
+    dialog.geometry("570x620")
     dialog.attributes('-topmost', True)
     dialog.transient(parent)
     dialog.grab_set()
