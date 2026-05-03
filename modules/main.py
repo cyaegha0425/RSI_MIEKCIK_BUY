@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-咩咩Kick! V3.0.0
+咩咩Kick! V3.0.1
 主入口模块 - Playwright线程和主循环
 """
 
@@ -356,7 +356,7 @@ def _run_playwright_thread(result_queue):
                     
                     ctx.close()
                     return
-                # ===== V3.0.0 正面硬刚模式 - 全API抢购架构 =====
+                # ===== V3.0.1 正面硬刚模式 - 全API抢购架构 =====
                 
                 # 获取输入模式
                 input_mode = CFG.get("INPUT_MODE", "intercept")
@@ -364,7 +364,7 @@ def _run_playwright_thread(result_queue):
                 keywords = CFG.get("SEARCH_KEYWORDS", "")
                 exclude_keywords = CFG.get("EXCLUDE_KEYWORDS", "")
                 
-                log.info(f"📍 [V3.0.0 正面硬刚] 输入模式={input_mode}, skuId={sku_id or '无'}, 关键词={keywords or '无'}")
+                log.info(f"📍 [V3.0.1 正面硬刚] 输入模式={input_mode}, skuId={sku_id or '无'}, 关键词={keywords or '无'}")
                 
                 time_offset = CFG.get("TIME_OFFSET", 0)
                 if time_offset:
@@ -727,7 +727,7 @@ def run():
         time.sleep(0.5)
         
         log.info("=" * 50)
-        log.info("咩咩蹄到好船来 V3.0.0 咩咩KICK！")
+        log.info("咩咩蹄到好船来 V3.0.1 咩咩KICK！")
         log.info(f"⏰ 目标: {CFG['TARGET_TIME']}")
         ambush_mode = CFG.get("AMBUSH_MODE", False)
         log.info(f"🎮 模式: {'伏击模式' if ambush_mode else '正面硬刚'} ({'页面加购+API付款' if CFG['MODE'] == 'api' else '页面模式'})")
@@ -818,7 +818,7 @@ def help():
     """显示帮助信息"""
     print("""
 ╔══════════════════════════════════════════════════════════╗
-║   咩咩蹄到好船来 V3.0.0 咩咩KICK！ - 抢光CIG的机库   ║
+║   咩咩蹄到好船来 V3.0.1 咩咩KICK！ - 抢光CIG的机库   ║
 ╠══════════════════════════════════════════════════════════╣
 ║                                                          ║
 ║  用法:                                                  ║
