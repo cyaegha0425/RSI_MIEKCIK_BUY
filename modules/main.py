@@ -482,6 +482,7 @@ def _run_playwright_thread(result_queue):
                     if gui: gui.update_status("T-0！刷新页面...", "cart")
                     
                     # 1. 刷新页面
+                    t0_time = time.time()  # 记录T-0时间点
                     ts = time.time()
                     try:
                         page.reload(wait_until="domcontentloaded", timeout=10000)
@@ -680,12 +681,19 @@ def _run_playwright_thread(result_queue):
                 else:
                     success = run_page_mode(page)
 
-                total = time.time() - target
-                log.info(f"\n📊 总耗时: {total:.2f}秒（从目标时间起算）")
+                # 计算总耗时：拦截模式用T-0刷新时间，SKU模式用target
+                try:
+                    checkout_time = time.time() - t0_time
+                    total = time.time() - target
+                    log.info(f"\n📊 抢购耗时: {checkout_time:.2f}秒（从T-0刷新起算）| 总耗时: {total:.2f}秒")
+                except NameError:
+                    total = time.time() - target
+                    checkout_time = total
+                    log.info(f"\n📊 总耗时: {total:.2f}秒（从目标时间起算）")
                 
                 # 显示结果（先弹窗，机库跳转用非阻塞方式）
                 if success:
-                    if gui: gui.show_result(True, f"总耗时 {total:.2f}秒")
+                    if gui: gui.show_result(True, f"抢购耗时 {checkout_time:.2f}秒")
                     config.notify("🎉 咩咩Kick！成功！", f"总耗时{total:.2f}秒")
                     # 后台跳转机库（不阻塞，失败也无所谓）
                     try: page.evaluate("window.setTimeout(() => window.location.href = 'https://robertsspaceindustries.com/en/account/pledges', 100)")

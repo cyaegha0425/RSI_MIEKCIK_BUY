@@ -613,10 +613,6 @@ class RSIClient:
         if validate_result or order_slug:
             order_num = order_slug or validate_result
             log.info(f"   🎉 付款成功! 订单号: {order_num}")
-            try:
-                self.page.goto("https://robertsspaceindustries.com/en/account/pledges", timeout=10000)
-            except:
-                pass
             return True
         else:
             log.error(f"   ❌ 付款失败: {json.dumps(result, ensure_ascii=False)[:500]}")
