@@ -52,6 +52,7 @@ class RSIGUI:
         self._gui_thread = None  # 保存GUI线程引用
         self._quit_requested = False  # 主线程请求退出标记
         self._gui_queue = queue.Queue()  # GUI消息队列（线程安全）
+        self._after_ids = []  # 跟踪所有after回调ID，退出时统一取消
         
         # 步骤定义 - V2.0.0 新流程
         self.steps = [
@@ -218,6 +219,7 @@ class RSIGUI:
             # 合并的poll：处理GUI队列 + 检查退出
             def _poll_queue():
                 if not self._running or self._quit_requested:
+                    self._cancel_all_after()
                     try:
                         self.root.quit()
                     except:
@@ -235,10 +237,10 @@ class RSIGUI:
                     pass  # mainloop退出后回调可能残留，静默忽略
                 try:
                     if self._running and self.root:
-                        self.root.after(50, _poll_queue)
+                        self._after_ids.append(self.root.after(50, _poll_queue))
                 except:
                     pass
-            self.root.after(50, _poll_queue)
+            self._after_ids.append(self.root.after(50, _poll_queue))
             
             self.root.mainloop()
         except Exception as e:
@@ -251,7 +253,8 @@ class RSIGUI:
         self._running = False
         self._result_confirmed = True
         log.info("⚠️ 用户点击取消抢购")
-        # 直接退出mainloop回到配置界面
+        # 取消所有after回调后退出mainloop
+        self._cancel_all_after()
         try:
             self.root.quit()
         except:
@@ -321,6 +324,7 @@ class RSIGUI:
             elif msg_type == "quit":
                 self._running = False
                 self._result_confirmed = True
+                self._cancel_all_after()
                 try:
                     self.root.quit()
                 except:
@@ -332,6 +336,15 @@ class RSIGUI:
         
         except Exception as e:
             print(f"GUI message handler error: {e}")
+    
+    def _cancel_all_after(self):
+        """取消所有已注册的after回调，防止mainloop退出后Tcl报错"""
+        for aid in self._after_ids:
+            try:
+                self.root.after_cancel(aid)
+            except:
+                pass
+        self._after_ids.clear()
     
     def _show_clear_cart_dialog(self, event):
         """在主线程显示清空购物车确认弹窗"""
@@ -410,7 +423,7 @@ class RSIGUI:
             if self._running:
                 try:
                     if self.root:
-                        self.root.after(50, self._update_countdown)
+                        self._after_ids.append(self.root.after(50, self._update_countdown))
                 except:
                     pass
         except:
