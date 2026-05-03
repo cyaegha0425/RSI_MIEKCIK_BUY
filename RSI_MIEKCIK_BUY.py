@@ -87,6 +87,9 @@ if __name__ == "__main__":
         import sys
         sys.exit(0)
     
+    import os
+    crash_log = os.path.join(os.path.dirname(os.path.abspath(__file__)), "crash.log")
+    
     try:
         args = get_args()
         if args.test:
@@ -95,5 +98,8 @@ if __name__ == "__main__":
             run()
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        input("\n程序异常退出，按回车关闭...")
+        tb = traceback.format_exc()
+        print(tb)
+        with open(crash_log, "w", encoding="utf-8") as f:
+            f.write(tb)
+        input("程序异常退出，按回车关闭...")

@@ -743,8 +743,15 @@ def _run_playwright_thread(result_queue):
                     log.info("⚠️ 用户取消抢购")
                     result_queue.put(("cancel", None))
                 else:
+                    import traceback as _tb2
+                    tb_str = _tb2.format_exc()
                     log.error(f"\n❌ 异常: {e}")
-                    import traceback; traceback.print_exc()
+                    print(tb_str)
+                    try:
+                        crash_path = os.path.join(config.BASE_PATH, "crash.log")
+                        with open(crash_path, "w", encoding="utf-8") as cf:
+                            cf.write(tb_str)
+                    except: pass
                     try: config.ss(page, "error")
                     except: pass
                     if gui: gui.show_result(False, str(e))
@@ -756,8 +763,17 @@ def _run_playwright_thread(result_queue):
                 # 不在Playwright线程里destroy GUI，让GUI在主线程自行关闭
                 
     except Exception as e:
+        import traceback as _tb
+        tb_str = _tb.format_exc()
         log.error(f"\n❌ Playwright线程异常: {e}")
-        import traceback; traceback.print_exc()
+        print(tb_str)
+        # 写crash.log确保闪退也能看到报错
+        try:
+            crash_path = os.path.join(config.BASE_PATH, "crash.log")
+            with open(crash_path, "w", encoding="utf-8") as cf:
+                cf.write(tb_str)
+        except:
+            pass
         result_queue.put(("error", str(e)))
 
 
