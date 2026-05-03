@@ -419,6 +419,7 @@ def _run_playwright_thread(result_queue):
                 # ===== 按模式分两条路径 =====
                 cart_success = False
                 current_sku_id = sku_id
+                attempt_start = None  # SKU模式加购开始时间
                 
                 _cancelled = False
                 
@@ -437,7 +438,10 @@ def _run_playwright_thread(result_queue):
                         time.sleep(0.01)
                     
                     attempt_start = time.time()  # SKU模式记录加购开始时间
-                    log.info(f"   ⏰ T-10s 到达，SKU直购模式开始API加购轮询...")
+                    if time.time() - server_offset >= target:
+                        log.info(f"   ⏰ T-0已过，SKU直购模式立即开抢！")
+                    else:
+                        log.info(f"   ⏰ T-10s 到达，SKU直购模式开始API加购轮询...")
                     if gui: gui.update_status(f"API加购轮询 skuId={current_sku_id}...", "cart")
                     
                     # API加购轮询 T-10 ~ T+5
@@ -684,7 +688,7 @@ def _run_playwright_thread(result_queue):
 
                 # 计算总耗时
                 now = time.time()
-                if input_mode == "sku" and 'attempt_start' in dir():
+                if input_mode == "sku" and attempt_start is not None:
                     # SKU模式：从加购开始时间算，T-0之前完成显示"提前"
                     checkout_time = now - attempt_start
                     total = now - target
