@@ -4,14 +4,17 @@
 
 import json
 import os
+import sys
 
-BOOKMARKS_FILE = os.path.join(os.path.dirname(__file__), '..', 'sku_bookmarks.json')
+from . import config as _cfg
+
+BOOKMARKS_FILE = os.path.join(_cfg.BASE_PATH, 'sku_bookmarks.json')
 
 def load_bookmarks():
     """加载收藏的skuId列表，首次使用自动从example复制"""
     if not os.path.exists(BOOKMARKS_FILE):
         import shutil
-        example_file = os.path.join(os.path.dirname(__file__), '..', 'sku_bookmarks.example.json')
+        example_file = os.path.join(_cfg.BASE_PATH, 'sku_bookmarks.example.json')
         if os.path.exists(example_file):
             try:
                 os.makedirs(os.path.dirname(BOOKMARKS_FILE), exist_ok=True)

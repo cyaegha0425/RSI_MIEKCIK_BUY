@@ -25,6 +25,12 @@ def resource_path(relative_path):
         base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base_path, 'images', relative_path)
 
+# 项目根目录（兼容PyInstaller打包）
+if getattr(sys, 'frozen', False):
+    BASE_PATH = os.path.dirname(sys.executable)
+else:
+    BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 # GUI背景色常量（用于需要底色的控件，如日志区域）
 GUI_BG_COLOR = "#A8B4D4"  # 小底色条颜色（浅蓝灰白）
 GUI_TITLE_COLOR = "#1a3a5c"  # 标题文字（深蓝）
@@ -86,9 +92,9 @@ CFG = {
     "SKU_ID": "",
     "MANUAL_TIME_OFFSET": "",
     "MANUAL_ONLY": False,
-    "COOKIE_FILE": "./scautobuy/rsi_cookies.json",
-    "LOG_FILE": "./scautobuy/rsi_buy.log",
-    "SCREENSHOT_DIR": "./scautobuy/screenshots",
+    "COOKIE_FILE": os.path.join(BASE_PATH, "scautobuy", "rsi_cookies.json"),
+    "LOG_FILE": os.path.join(BASE_PATH, "scautobuy", "rsi_buy.log"),
+    "SCREENSHOT_DIR": os.path.join(BASE_PATH, "scautobuy", "screenshots"),
 }
 
 # ============================================================
@@ -330,6 +336,27 @@ logging.basicConfig(
     ]
 )
 log = logging.getLogger()
+
+# GUI日志队列 - 日志窗口从这里读取
+import queue as _queue_mod
+_log_queue = _queue_mod.Queue(-1)  # 无限大小
+
+class _QueueLogHandler(logging.Handler):
+    """将日志推送到GUI队列的Handler"""
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            _log_queue.put_nowait(msg)
+        except:
+            pass
+
+_queue_handler = _QueueLogHandler()
+_queue_handler.setFormatter(logging.Formatter('%(asctime)s.%(msecs)03d %(message)s', datefmt='%H:%M:%S'))
+log.addHandler(_queue_handler)
+
+def get_log_queue():
+    """返回日志队列，供GUI日志窗口读取"""
+    return _log_queue
 
 # ============================================================
 # 工具函数
