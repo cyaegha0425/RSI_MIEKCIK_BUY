@@ -1208,7 +1208,7 @@ class RSIClient:
         
         return {"success": False, "data": result}
 
-    def get_cart_items_from_page(self) -> list:
+    def get_cart_items_from_page(self) -> dict:
         """从购物车页面DOM读取商品信息（伏击模式用）
         
         返回格式：[{'title': str, 'price': float}]

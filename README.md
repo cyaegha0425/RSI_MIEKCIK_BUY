@@ -1,11 +1,11 @@
-# RSI_MIEKCIK_BUY - 咩咩蹄到好船来 V3.0.2
+# RSI_MIEKCIK_BUY - 咩咩蹄到好船来 V3.0.3
 
-![Version](https://img.shields.io/badge/version-V3.0.2-blue)
+![Version](https://img.shields.io/badge/version-V3.0.3-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-green)
 
 ## 项目介绍
 
-**咩咩蹄到好船来 V3.0.2** 是一款基于 Playwright + GraphQL API 的 RSI 星际公民商店自动抢购工具，采用全 API 抢购架构，不依赖 DOM 点击，实现极速抢购。
+**咩咩蹄到好船来 V3.0.3** 是一款基于 Playwright + GraphQL API 的 RSI 星际公民商店自动抢购工具，采用全 API 抢购架构，不依赖 DOM 点击，实现极速抢购。
 
 ## 核心特性
 
@@ -156,4 +156,4 @@ RSI_MIEKCIK_BUY/
 
 ---
 
-咩咩蹄到好船来 V3.0.2
+咩咩蹄到好船来 V3.0.3
