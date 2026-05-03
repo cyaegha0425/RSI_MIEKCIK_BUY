@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-咩咩Kick! V3.0.1
+咩咩Kick! V3.0.2
 配置窗口模块 - 包含配置对话框、清空购物车弹窗、配置读写
 """
 
@@ -239,7 +239,7 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
     """显示SKU收藏夹弹窗，支持搜索和选择"""
     import tkinter as tk
     from tkinter import messagebox
-    from .sku_bookmarks import load_bookmarks, remove_bookmark
+    from .sku_bookmarks import load_bookmarks, remove_bookmark, add_bookmark
     
     dialog = tk.Toplevel(parent)
     dialog.title("📦 SKU收藏夹")
@@ -295,7 +295,7 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
     # 绑定鼠标滚轮
     def _on_mousewheel(event):
         canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-    canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    canvas.bind("<MouseWheel>", _on_mousewheel)
     
     item_frames = []
     
@@ -348,13 +348,33 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
                       fg="white", bg="#6A8CBA", relief='flat',
                       padx=10, pady=2, cursor='hand2').pack(side='right', padx=3)
             
-            # 删除按钮(带确认)
+            # 删除按钮(带确认弹窗置顶)
             def _delete(sid=sku_id, r=row, bname=name):
-                if not messagebox.askyesno("确认删除", f"确定删除 {bname} (SKU:{sid})？"):
-                    return
-                remove_bookmark(sid)
-                r.destroy()
-                item_frames.remove(r)
+                confirm = tk.Toplevel(dialog)
+                confirm.title("确认删除")
+                confirm.geometry("300x120")
+                confirm.attributes('-topmost', True)
+                confirm.transient(dialog)
+                confirm.grab_set()
+                tk.Label(confirm, text=f"确定删除 {bname} (SKU:{sid})？",
+                         font=("Microsoft YaHei UI", 11), wraplength=260).pack(pady=15)
+                btn_f = tk.Frame(confirm)
+                btn_f.pack(pady=5)
+                def _do_delete():
+                    remove_bookmark(sid)
+                    r.destroy()
+                    if r in item_frames:
+                        item_frames.remove(r)
+                    confirm.destroy()
+                    refresh_list()
+                def _cancel_del():
+                    confirm.destroy()
+                tk.Button(btn_f, text="删除", command=_do_delete,
+                          font=("Microsoft YaHei UI", 10), fg="white", bg="#9E6B7A",
+                          relief='flat', padx=15, pady=3, cursor='hand2').pack(side='left', padx=10)
+                tk.Button(btn_f, text="取消", command=_cancel_del,
+                          font=("Microsoft YaHei UI", 10), fg="white", bg="#7B8FB7",
+                          relief='flat', padx=15, pady=3, cursor='hand2').pack(side='left', padx=10)
             
             tk.Button(row, text="✕", command=_delete,
                       font=("Microsoft YaHei UI", 9),
@@ -369,6 +389,10 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
         if not bookmarks:
             tk.Label(scrollable_frame, text="暂无收藏，拦截器获取SKU后自动保存",
                      font=("Microsoft YaHei UI", 11), fg="#999999", bg="white").pack(pady=20)
+        
+        # 搜索/刷新后更新canvas滚动区域
+        scrollable_frame.update_idletasks()
+        canvas.configure(scrollregion=canvas.bbox("all"))
     
     # 搜索触发
     search_var.trace_add('write', refresh_list)
@@ -420,17 +444,20 @@ def _show_bookmarks_dialog(parent, sku_entry, price_entry, input_mode_var, on_mo
               padx=8, pady=2, cursor='hand2').pack(side='left', padx=5)
     
     # 关闭按钮
+    def _on_close():
+        try:
+            canvas.unbind("<MouseWheel>")
+        except:
+            pass
+        dialog.destroy()
+    
     btn_row = tk.Frame(dialog, bg=GUI_BG_COLOR)
     btn_row.pack(pady=10)
     
-    tk.Button(btn_row, text="关闭", command=dialog.destroy,
+    tk.Button(btn_row, text="关闭", command=_on_close,
               font=("Microsoft YaHei UI", 11, "bold"),
               fg="white", bg="#9E6B7A", relief='flat',
               padx=20, pady=5, cursor='hand2').pack(side='left', padx=5)
-    
-    def _on_close():
-        canvas.unbind_all("<MouseWheel>")
-        dialog.destroy()
     
     dialog.protocol("WM_DELETE_WINDOW", _on_close)
     dialog.wait_window(dialog)
@@ -482,7 +509,7 @@ def _show_config_dialog():
     current_dt = datetime.now()
     
     root = tk.Tk()
-    root.title("咩咩蹄到好船来 V3.0.1 咩咩KICK！")
+    root.title("咩咩蹄到好船来 V3.0.2 咩咩KICK！")
     root.geometry("630x780")
     root.resizable(False, False)
     
@@ -502,7 +529,7 @@ def _show_config_dialog():
     CFG_BG_COLOR = GUI_BG_COLOR
     
     # ===== 标题 =====
-    title_label = tk.Label(root, text="咩咩蹄到好船来 V3.0.1 咩咩KICK！",
+    title_label = tk.Label(root, text="咩咩蹄到好船来 V3.0.2 咩咩KICK！",
                           font=("Microsoft YaHei UI", 20, "bold"),
                           fg=GUI_TITLE_COLOR, bg=CFG_BG_COLOR)
     title_label.place(relx=0.5, y=30, anchor='n')
@@ -838,6 +865,8 @@ def _show_config_dialog():
                               padx=18, pady=5, cursor='hand2')
     latency_btn.place(relx=0.62, y=565, anchor='n')
     
+
+    
     # ===== 按钮行 =====
     start_btn = tk.Button(root, text="开始抢购", command=lambda: None,
                           font=("Microsoft YaHei UI", 13, "bold"),
@@ -860,7 +889,7 @@ def _show_config_dialog():
 
     
     # ===== 作者署名 =====
-    author_label = tk.Label(root, text="by 咩咩莉娅 V3.0.1",
+    author_label = tk.Label(root, text="by 咩咩莉娅 V3.0.2",
                             font=("Microsoft YaHei UI", 8),
                             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR)
     author_label.place(relx=1.0, rely=1.0, x=-5, y=-5, anchor='se')
