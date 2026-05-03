@@ -15,21 +15,12 @@ def load_bookmarks():
     if not os.path.exists(BOOKMARKS_FILE):
         import shutil
         example_file = os.path.join(_cfg.BASE_PATH, 'sku_bookmarks.example.json')
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f'[收藏夹] BOOKMARKS_FILE不存在: {BOOKMARKS_FILE}')
-        logger.info(f'[收藏夹] example路径: {example_file}')
-        logger.info(f'[收藏夹] BASE_PATH: {_cfg.BASE_PATH}')
-        logger.info(f'[收藏夹] example存在: {os.path.exists(example_file)}')
         if os.path.exists(example_file):
             try:
                 os.makedirs(os.path.dirname(BOOKMARKS_FILE), exist_ok=True)
                 shutil.copy2(example_file, BOOKMARKS_FILE)
-                logger.info(f'[收藏夹] 复制成功')
-            except Exception as e:
-                logger.error(f'[收藏夹] 复制失败: {e}')
-        else:
-            logger.warning(f'[收藏夹] example文件不存在，跳过复制')
+            except:
+                pass
     try:
         with open(BOOKMARKS_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
