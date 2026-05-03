@@ -232,9 +232,10 @@ class RSIGUI:
                             break
                         self._handle_gui_message(msg_type, msg_data)
                 except Exception as e:
-                    print(f"GUI poll error: {e}")
+                    pass  # mainloop退出后回调可能残留，静默忽略
                 try:
-                    self.root.after(50, _poll_queue)
+                    if self._running and self.root:
+                        self.root.after(50, _poll_queue)
                 except:
                     pass
             self.root.after(50, _poll_queue)
@@ -408,7 +409,8 @@ class RSIGUI:
             # 继续更新
             if self._running:
                 try:
-                    self.root.after(50, self._update_countdown)
+                    if self.root:
+                        self.root.after(50, self._update_countdown)
                 except:
                     pass
         except:

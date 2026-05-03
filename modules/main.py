@@ -96,7 +96,7 @@ def _run_playwright_thread(result_queue):
                 from .api_client import RSIClient
                 client = RSIClient(page)
                 
-                # 时间校准
+                # 时间校准（根据剩余时间自适应）
                 log.info("\n📍 [时间校准]")
                 if gui: gui.update_status("校准时间...", "calibrate")
                 
@@ -112,11 +112,28 @@ def _run_playwright_thread(result_queue):
                 
                 manual_only = CFG.get("MANUAL_ONLY", False)
                 
+                # 计算距T-0剩余时间，决定校准策略
+                time_to_target = target - time.time()
+                
                 if manual_only:
                     # 纯手动模式：跳过自动校准
                     server_offset = manual_offset
                     CFG["SERVER_TIME_OFFSET"] = manual_offset
                     log.info(f"   纯手动模式，偏移: {server_offset:+.3f}s")
+                elif time_to_target < 15:
+                    # 距T-0不足15秒：快速校准（3次采样）或直接用手动偏移
+                    if time_to_target < 8:
+                        log.warning(f"   ⚠️ 距T-0仅{time_to_target:.1f}秒，跳过校准使用手动偏移")
+                        server_offset = manual_offset if manual_offset != 0.0 else 0.0
+                    else:
+                        log.info(f"   ⏰ 距T-0仅{time_to_target:.1f}秒，快速校准3次")
+                        server_offset = client.calibrate_time(samples=3, interval=0.3)
+                    CFG["SERVER_TIME_OFFSET"] = server_offset
+                    log.info(f"   偏移: {server_offset:+.3f}s")
+                    if manual_offset != 0.0:
+                        server_offset += manual_offset
+                        CFG["SERVER_TIME_OFFSET"] = server_offset
+                        log.info(f"   叠加手动微调: {manual_offset:+.3f}s → 最终: {server_offset:+.3f}s")
                 else:
                     # 自动校准 + 手动微调叠加
                     server_offset = client.calibrate_time()
