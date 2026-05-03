@@ -87,8 +87,13 @@ if __name__ == "__main__":
         import sys
         sys.exit(0)
     
-    args = get_args()
-    if args.test:
-        test()
-    else:
-        run()
+    try:
+        args = get_args()
+        if args.test:
+            test()
+        else:
+            run()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        input("\n程序异常退出，按回车关闭...")
