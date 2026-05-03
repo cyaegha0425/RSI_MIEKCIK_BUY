@@ -6,19 +6,15 @@ import json
 import os
 import sys
 
-# PyInstaller打包后用EXE所在目录，开发环境用项目根目录
-if getattr(sys, 'frozen', False):
-    _BASE_PATH = os.path.dirname(sys.executable)
-else:
-    _BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from . import config as _cfg
 
-BOOKMARKS_FILE = os.path.join(_BASE_PATH, 'sku_bookmarks.json')
+BOOKMARKS_FILE = os.path.join(_cfg.BASE_PATH, 'sku_bookmarks.json')
 
 def load_bookmarks():
     """加载收藏的skuId列表，首次使用自动从example复制"""
     if not os.path.exists(BOOKMARKS_FILE):
         import shutil
-        example_file = os.path.join(_BASE_PATH, 'sku_bookmarks.example.json')
+        example_file = os.path.join(_cfg.BASE_PATH, 'sku_bookmarks.example.json')
         if os.path.exists(example_file):
             try:
                 os.makedirs(os.path.dirname(BOOKMARKS_FILE), exist_ok=True)

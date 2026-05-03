@@ -29,7 +29,7 @@ log = config.log
 
 def _load_saved_config():
     """加载保存的配置"""
-    config_file = "./scautobuy/rsi_config.json"
+    config_file = os.path.join(config.BASE_PATH, "scautobuy", "rsi_config.json")
     if os.path.exists(config_file):
         try:
             with open(config_file, 'r', encoding='utf-8') as f:
@@ -40,7 +40,7 @@ def _load_saved_config():
 
 def _save_config(data):
     """保存配置"""
-    config_file = "./scautobuy/rsi_config.json"
+    config_file = os.path.join(config.BASE_PATH, "scautobuy", "rsi_config.json")
     try:
         with open(config_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
