@@ -733,7 +733,7 @@ def _show_config_dialog():
     warning_time.place(relx=0.5, y=260, anchor='n')
     
     # ===== 偏移已合并进高级设置 =====
-    manual_offset_var = tk.StringVar(value=saved_config.get("manual_time_offset", "") if saved_config else "")
+    manual_offset_var = tk.StringVar(value=saved_config.get("manual_time_offset", "-0.1") if saved_config else "-0.1")
     manual_only_var = tk.BooleanVar(value=saved_config.get("manual_only", False) if saved_config else False)
     auto_calibrate_var = tk.BooleanVar(value=saved_config.get("auto_calibrate", False) if saved_config else False)
     
