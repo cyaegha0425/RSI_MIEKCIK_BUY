@@ -3,7 +3,7 @@
 """
 咩咩Kick! V3.0.0 SKU探测脚本
 用法: python sku_probe.py [关键词]
-例:   python sku_probe.py Kraken
+例:   python sku_probe.py Hercules
 
 功能：搜索关键词，列出拦截到的所有商品（名称+skuId+价格），不执行加购。
 """
@@ -128,7 +128,7 @@ def probe(keywords: str):
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("用法: python sku_probe.py [关键词]")
-        print("例:   python sku_probe.py Kraken")
+        print("例:   python sku_probe.py Hercules")
         print("      python sku_probe.py PTV")
         sys.exit(1)
 
