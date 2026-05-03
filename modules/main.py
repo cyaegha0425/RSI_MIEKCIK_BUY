@@ -131,6 +131,7 @@ def _run_playwright_thread(result_queue):
                         log.warning(f"   手动偏移格式错误: {manual_offset_str}")
                 
                 manual_only = CFG.get("MANUAL_ONLY", False)
+                auto_calibrate = CFG.get("AUTO_CALIBRATE", False)
                 
                 # 计算距T-0剩余时间，决定校准策略（用原始目标时间，校准偏移尚未叠加）
                 _target_raw = config.get_target()
@@ -141,11 +142,11 @@ def _run_playwright_thread(result_queue):
                     log.warning(f"   ⚠️ T-0已过{abs(time_to_target):.1f}秒！跳过校准立即开抢")
                     server_offset = manual_offset if manual_offset != 0.0 else 0.0
                     CFG["SERVER_TIME_OFFSET"] = server_offset
-                elif manual_only:
-                    # 纯手动模式：跳过自动校准
+                elif manual_only or not auto_calibrate:
+                    # 手动模式或自动校准未启用：跳过自动校准
                     server_offset = manual_offset
                     CFG["SERVER_TIME_OFFSET"] = manual_offset
-                    log.info(f"   纯手动模式，偏移: {server_offset:+.3f}s")
+                    log.info(f"   手动模式（自动校准未启用），偏移: {server_offset:+.3f}s")
                 elif time_to_target < 15:
                     # 距T-0不足15秒：快速校准（3次采样）或直接用手动偏移
                     if time_to_target < 8:
@@ -264,7 +265,7 @@ def _run_playwright_thread(result_queue):
                     
                     # 重建校准调度（启动时已做过初始校准，这里规划后续校准点）
                     # 伏击模式校准在预装填等待和T-0等待期间执行
-                    scheduler_ambush = CalibrationScheduler(client, target, server_offset=server_offset)
+                    scheduler_ambush = CalibrationScheduler(client, target, server_offset=server_offset) if CFG.get("AUTO_CALIBRATE", False) else None
                     
                     # ===== 降级策略：5秒 <= 剩余时间 < 30秒 =====
                     if total_remaining < 30:
@@ -338,7 +339,7 @@ def _run_playwright_thread(result_queue):
                             return
                         
                         # 执行到期校准
-                        server_offset = scheduler_ambush.check_and_calibrate()
+                        server_offset = scheduler_ambush.check_and_calibrate() if scheduler_ambush else server_offset
                         
                         time.sleep(0.01)
                     
@@ -416,7 +417,7 @@ def _run_playwright_thread(result_queue):
                 
                 target = config.get_target() + time_offset
                 # 复用启动时的调度器（已含初始校准）
-                scheduler_direct = CalibrationScheduler(client, target, server_offset=server_offset)
+                scheduler_direct = CalibrationScheduler(client, target, server_offset=server_offset) if CFG.get("AUTO_CALIBRATE", False) else None
                 
                 if gui: gui.update_status("等待抢购时间...", "wait")
                 if gui: gui.show_cancel_button()
@@ -446,7 +447,7 @@ def _run_playwright_thread(result_queue):
                             if gui: gui.close_and_return_to_config()
                             result_queue.put(("cancel", None))
                             return
-                        server_offset = scheduler_direct.check_and_calibrate()
+                        server_offset = scheduler_direct.check_and_calibrate() if scheduler_direct else server_offset
                         time.sleep(0.01)
                     
                     attempt_start = time.time()  # SKU模式记录加购开始时间
@@ -492,7 +493,7 @@ def _run_playwright_thread(result_queue):
                             if gui: gui.close_and_return_to_config()
                             result_queue.put(("cancel", None))
                             return
-                        server_offset = scheduler_direct.check_and_calibrate()
+                        server_offset = scheduler_direct.check_and_calibrate() if scheduler_direct else server_offset
                         time.sleep(0.01)
                     
                     log.info(f"   ⏰ T-0 到达，刷新拦截模式！")

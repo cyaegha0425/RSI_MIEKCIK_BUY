@@ -128,7 +128,7 @@ def _show_clear_cart_dialog(gui, _clear_cart_event):
 # 高级设置弹窗 (570x450)
 # ============================================================
 
-def _show_advanced_settings_dialog(parent, current_offset, current_proxy, current_manual_offset="", current_manual_only=False):
+def _show_advanced_settings_dialog(parent, current_offset, current_proxy, current_manual_offset="", current_manual_only=False, current_auto_calibrate=False):
     """显示高级设置对话框"""
     import tkinter as tk
     
@@ -203,14 +203,25 @@ def _show_advanced_settings_dialog(parent, current_offset, current_proxy, curren
     tk.Label(proxy_input_frame, text="(留空自动检测)", font=("Microsoft YaHei UI", 11),
              fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR, padx=12).pack(side='left')
     
+    # === 自动校准 ===
+    calib_label_frame = tk.Frame(dialog, bg=GUI_BG_COLOR, padx=4, pady=1)
+    calib_label_frame.place(relx=0.5, y=295, anchor='n')
+    auto_calib_var = tk.BooleanVar(value=current_auto_calibrate)
+    tk.Checkbutton(calib_label_frame, text="\u23f1\ufe0f 启用自动时间校准", variable=auto_calib_var,
+                   font=("Microsoft YaHei UI", 13), fg=GUI_TITLE_COLOR, bg=GUI_BG_COLOR,
+                   selectcolor="white", activebackground=GUI_BG_COLOR,
+                   activeforeground=GUI_TEXT_COLOR).pack(side='left')
+    _create_help_button(calib_label_frame, "默认关闭，使用手动偏移即可\n开启后会自动测量与RSI服务器的时差\n网络延迟不稳定时校准可能不准").pack(side='left', padx=3)
+    
     # 返回值存储
-    result = {"offset": current_offset, "proxy": current_proxy, "manual_offset": current_manual_offset, "manual_only": current_manual_only}
+    result = {"offset": current_offset, "proxy": current_proxy, "manual_offset": current_manual_offset, "manual_only": current_manual_only, "auto_calibrate": current_auto_calibrate}
     
     def on_confirm():
         result["offset"] = offset_entry.get().strip()
         result["proxy"] = proxy_entry.get().strip()
         result["manual_offset"] = manual_offset_entry.get().strip()
         result["manual_only"] = manual_only_var.get()
+        result["auto_calibrate"] = auto_calib_var.get()
         dialog.destroy()
     
     def on_cancel():
@@ -218,7 +229,7 @@ def _show_advanced_settings_dialog(parent, current_offset, current_proxy, curren
     
     # 按钮
     btn_frame = tk.Frame(dialog, bg=GUI_BG_COLOR)
-    btn_frame.place(relx=0.5, y=340, anchor='n')
+    btn_frame.place(relx=0.5, y=370, anchor='n')
     tk.Button(btn_frame, text="确认", command=on_confirm, font=("Microsoft YaHei UI", 12, "bold"),
               fg="white", bg="#7B8FB7", relief='flat', padx=22, pady=8, cursor='hand2').pack(side='left', padx=15)
     tk.Button(btn_frame, text="取消", command=on_cancel, font=("Microsoft YaHei UI", 12, "bold"),
@@ -724,6 +735,7 @@ def _show_config_dialog():
     # ===== 偏移已合并进高级设置 =====
     manual_offset_var = tk.StringVar(value=saved_config.get("manual_time_offset", "") if saved_config else "")
     manual_only_var = tk.BooleanVar(value=saved_config.get("manual_only", False) if saved_config else False)
+    auto_calibrate_var = tk.BooleanVar(value=saved_config.get("auto_calibrate", False) if saved_config else False)
     
     # ===== 输入方式选择区域 =====
     input_mode_frame = tk.Frame(root, bg=CFG_BG_COLOR, padx=4, pady=2)
@@ -854,11 +866,12 @@ def _show_config_dialog():
     advanced_proxy = tk.StringVar(value=saved_config.get("proxy", CFG["PROXY"]) if saved_config else (CFG["PROXY"] or ""))
     
     def _open_advanced_settings():
-        result = _show_advanced_settings_dialog(root, advanced_offset.get(), advanced_proxy.get(), manual_offset_var.get(), manual_only_var.get())
+        result = _show_advanced_settings_dialog(root, advanced_offset.get(), advanced_proxy.get(), manual_offset_var.get(), manual_only_var.get(), auto_calibrate_var.get())
         advanced_offset.set(result["offset"])
         advanced_proxy.set(result["proxy"])
         manual_offset_var.set(result["manual_offset"])
         manual_only_var.set(result["manual_only"])
+        auto_calibrate_var.set(result["auto_calibrate"])
     
     advanced_btn = tk.Button(root, text="高级设置", command=_open_advanced_settings,
                               font=("Microsoft YaHei UI", 11),
@@ -924,6 +937,7 @@ def _show_config_dialog():
             "ambush_mode": ambush_mode_var.get(),
             "manual_time_offset": manual_offset_var.get(),
             "manual_only": manual_only_var.get(),
+            "auto_calibrate": auto_calibrate_var.get(),
         }
         _save_config(config_data)
         
@@ -956,6 +970,7 @@ def _show_config_dialog():
             CFG["MANUAL_TIME_OFFSET"] = manual_offset_var.get()
         
         CFG["MANUAL_ONLY"] = manual_only_var.get()
+        CFG["AUTO_CALIBRATE"] = auto_calibrate_var.get()
         
         result["continue"] = True
         root.destroy()
