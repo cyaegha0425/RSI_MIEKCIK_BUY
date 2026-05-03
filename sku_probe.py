@@ -38,14 +38,16 @@ def probe(keywords: str):
         try:
             login(ctx)
 
+            # 先创建拦截器并注册（必须在goto之前，否则漏掉响应）
+            interceptor = SKUInterceptor(page, keywords, "")
+            interceptor.reset_start_time()  # 注册page.on('response')
+            print(f"  📍 拦截器已注册，等待GraphQL响应...\n")
+
             # 构造带keywords的URL（触发SPA+GraphQL）
             url = CFG["BROWSE_URL_PREFIX"] + keywords
             print(f"  📍 打开: {url}")
             page.goto(url, wait_until="domcontentloaded", timeout=20000)
 
-            # 注册拦截器
-            interceptor = SKUInterceptor(page, keywords, "")
-            print(f"  📍 拦截器已注册，等待GraphQL响应...\n")
 
             # 等待拦截器收集
             print(f"  ⏳ 等待5秒收集响应...\n")
@@ -53,8 +55,8 @@ def probe(keywords: str):
 
             # 刷新一次触发更多GraphQL
             print(f"  🔄 刷新页面...")
+            interceptor.reset_start_time()  # 重置计时+重新注册
             page.reload(wait_until="domcontentloaded", timeout=15000)
-            interceptor.reset_start_time()
             time.sleep(5)
 
             # 获取结果
