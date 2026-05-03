@@ -4,7 +4,7 @@ REM RSI_MIEKCIK_BUY Protected Build Script (Cython + PyInstaller)
 
 echo ================================================
 echo   RSI_MIEKCIK_BUY Protected Build
-echo   MieMie Kick! V3.0.3 (Cython Protected)
+echo   MieMie Kick! V3.0.4 (Cython Protected)
 echo ================================================
 echo.
 

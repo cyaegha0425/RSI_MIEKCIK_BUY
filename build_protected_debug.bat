@@ -4,7 +4,7 @@ REM RSI_MIEKCIK_BUY Protected Build - DEBUG (console visible)
 
 echo ================================================
 echo   RSI_MIEKCIK_BUY Protected Build (DEBUG)
-echo   MieMie Kick! V3.0.3 - Console Mode
+echo   MieMie Kick! V3.0.4 - Console Mode
 echo ================================================
 echo.
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-咩咩Kick! V3.0.3
+咩咩Kick! V3.0.4
 配置窗口模块 - 包含配置对话框、清空购物车弹窗、配置读写
 """
 
@@ -526,7 +526,7 @@ def _show_config_dialog():
     current_dt = datetime.now()
     
     root = tk.Tk()
-    root.title("咩咩蹄到好船来 V3.0.3 咩咩KICK！")
+    root.title("咩咩蹄到好船来 V3.0.4 咩咩KICK！")
     root.geometry("630x780")
     root.resizable(False, False)
     
@@ -546,7 +546,7 @@ def _show_config_dialog():
     CFG_BG_COLOR = GUI_BG_COLOR
     
     # ===== 标题 =====
-    title_label = tk.Label(root, text="咩咩蹄到好船来 V3.0.3 咩咩KICK！",
+    title_label = tk.Label(root, text="咩咩蹄到好船来 V3.0.4 咩咩KICK！",
                           font=("Microsoft YaHei UI", 20, "bold"),
                           fg=GUI_TITLE_COLOR, bg=CFG_BG_COLOR)
     title_label.place(relx=0.5, y=30, anchor='n')
@@ -908,7 +908,7 @@ def _show_config_dialog():
 
     
     # ===== 作者署名 =====
-    author_label = tk.Label(root, text="by 咩咩莉娅 V3.0.3",
+    author_label = tk.Label(root, text="by 咩咩莉娅 V3.0.4",
                             font=("Microsoft YaHei UI", 8),
                             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR)
     author_label.place(relx=1.0, rely=1.0, x=-5, y=-5, anchor='se')

@@ -1,4 +1,4 @@
-# RSI_MIEKCIK_BUY - AI 开发文档 V3.0.3
+# RSI_MIEKCIK_BUY - AI 开发文档 V3.0.4
 
 > 本文档面向 AI 助手，提供项目架构、关键约束和开发指南。人类用户请阅读 README.md。
 
@@ -136,8 +136,8 @@ AddCreditMutation → NextStepMutation(进入结账) → NextStepMutation(确认
 
 - V3.0.0：全API架构重构
 - V3.0.1：queue+after轮询重构、after回调退出保护、校准自适应、导航冲突修复、付款非阻塞跳转、Edge bing.com防白屏
-- V3.0.3：GUI日志窗口、收藏夹bug修（搜索/删除置顶/新建/滚轮翻页）、PyInstaller路径兼容、SKU/伏击耗时修复
+- V3.0.4：GUI日志窗口、收藏夹bug修（搜索/删除置顶/新建/滚轮翻页）、PyInstaller路径兼容、SKU/伏击耗时修复
 
 ---
 
-AI 开发文档 V3.0.3
+AI 开发文档 V3.0.4

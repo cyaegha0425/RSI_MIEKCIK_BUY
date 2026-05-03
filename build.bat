@@ -4,7 +4,7 @@ REM RSI_MIEKCIK_BUY Build Script
 
 echo ================================================
 echo   RSI_MIEKCIK_BUY Build Script
-echo   MieMie Kick! V3.0.3
+echo   MieMie Kick! V3.0.4
 echo ================================================
 echo.
 
