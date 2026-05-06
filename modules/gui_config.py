@@ -159,16 +159,16 @@ def _show_clear_cart_dialog(gui, _clear_cart_event):
 
 
 # ============================================================
-# 高级设置弹窗 (570x450)
+# 高级设置弹窗 (380x240)
 # ============================================================
 
-def _show_advanced_settings_dialog(parent, current_manual_offset="-0.1", current_auto_calibrate=False, current_proxy=""):
+def _show_advanced_settings_dialog(parent, current_manual_offset="-0.1", current_auto_calibrate=False, current_proxy="", current_turbo=False, current_turbo_next_delay=0.2, current_turbo_validate_delay=0.15):
     """显示高级设置对话框"""
     import tkinter as tk
 
     dialog = tk.Toplevel(parent)
-    dialog.title("高级设置")
-    dialog.geometry("570x480")
+    dialog.title("高级设置 - V4.0 TURBO")
+    dialog.geometry("380x240")
     dialog.attributes('-topmost', True)
     dialog.transient(parent)
     dialog.grab_set()
@@ -183,75 +183,128 @@ def _show_advanced_settings_dialog(parent, current_manual_offset="-0.1", current
 
     # ========== 1. 标题 ==========
     title_frame = tk.Frame(container, bg=GUI_BG_COLOR)
-    title_frame.pack(pady=(18, 6))
-    tk.Label(title_frame, text="高级设置", font=("Microsoft YaHei UI", 18, "bold"),
+    title_frame.pack(pady=(6, 2))
+    tk.Label(title_frame, text="高级设置", font=("Microsoft YaHei UI", 13, "bold"),
              fg=GUI_TITLE_COLOR, bg=GUI_BG_COLOR).pack()
+
+    # ========== 1.5 ⚡ TURBO 闪电狂暴模式 ==========
+    turbo_section = tk.Frame(container, bg=GUI_BG_COLOR)
+    turbo_section.pack(fill='x', padx=14, pady=2)
+    turbo_row = tk.Frame(turbo_section, bg=GUI_BG_COLOR)
+    turbo_row.pack(anchor='w')
+    turbo_var = tk.BooleanVar(value=current_turbo)
+    tk.Checkbutton(turbo_row, text="⚡ TURBO 闪电狂暴模式", variable=turbo_var,
+                   font=("Microsoft YaHei UI", 11, "bold"), fg="#FF4500", bg=GUI_BG_COLOR,
+                   selectcolor="white", activebackground=GUI_BG_COLOR,
+                   activeforeground=GUI_TEXT_COLOR).pack(side='left')
+    _create_help_button(turbo_row, "激进结账模式！\nNextStep不等HTTP响应，短延迟直接发下一个\n速度更快，但可能有失败风险\n失败会自动回退到正常模式重试").pack(side='left', padx=3)
+
+    # TURBO延迟设置
+    turbo_delay_section = tk.Frame(container, bg=GUI_BG_COLOR)
+    turbo_delay_section.pack(fill='x', padx=14, pady=1)
+    
+    # NextStep延迟
+    turbo_ns_row = tk.Frame(turbo_delay_section, bg=GUI_BG_COLOR)
+    turbo_ns_row.pack(anchor='w', pady=2)
+    tk.Label(turbo_ns_row, text="  NextStep间隔:", font=("Microsoft YaHei UI", 10),
+             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR).pack(side='left')
+    turbo_ns_entry = tk.Entry(turbo_ns_row, font=("Microsoft YaHei UI", 10), width=6,
+                              bg="white", fg="black", insertbackground="black", relief='flat', bd=2)
+    turbo_ns_entry.insert(0, str(current_turbo_next_delay))
+    turbo_ns_entry.pack(side='left')
+    tk.Label(turbo_ns_row, text="秒", font=("Microsoft YaHei UI", 9),
+             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR, padx=2).pack(side='left')
+    
+    # Validate延迟
+    turbo_val_row = tk.Frame(turbo_delay_section, bg=GUI_BG_COLOR)
+    turbo_val_row.pack(anchor='w', pady=2)
+    tk.Label(turbo_val_row, text="  Validate间隔:", font=("Microsoft YaHei UI", 10),
+             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR).pack(side='left')
+    turbo_val_entry = tk.Entry(turbo_val_row, font=("Microsoft YaHei UI", 10), width=6,
+                              bg="white", fg="black", insertbackground="black", relief='flat', bd=2)
+    turbo_val_entry.insert(0, str(current_turbo_validate_delay))
+    turbo_val_entry.pack(side='left')
+    tk.Label(turbo_val_row, text="秒", font=("Microsoft YaHei UI", 9),
+             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR, padx=2).pack(side='left')
+    _create_help_button(turbo_val_row, "建议值：\nTURBO模式 0.15-0.25s\n正常模式请勿开启TURBO").pack(side='left', padx=3)
 
     # ========== 2. ⏱️ 启用自动时间校准 ==========
     calib_section = tk.Frame(container, bg=GUI_BG_COLOR)
-    calib_section.pack(fill='x', padx=30, pady=6)
+    calib_section.pack(fill='x', padx=14, pady=2)
     calib_row = tk.Frame(calib_section, bg=GUI_BG_COLOR)
     calib_row.pack(anchor='w')
     auto_calib_var = tk.BooleanVar(value=current_auto_calibrate)
-    tk.Checkbutton(calib_row, text="⏱️ 启用自动时间校准", variable=auto_calib_var,
-                   font=("Microsoft YaHei UI", 13), fg=GUI_TITLE_COLOR, bg=GUI_BG_COLOR,
+    tk.Checkbutton(calib_row, text="⏱️ 自动时间校准", variable=auto_calib_var,
+                   font=("Microsoft YaHei UI", 11), fg=GUI_TITLE_COLOR, bg=GUI_BG_COLOR,
                    selectcolor="white", activebackground=GUI_BG_COLOR,
                    activeforeground=GUI_TEXT_COLOR).pack(side='left')
     _create_help_button(calib_row, "默认关闭，使用手动偏移即可\n开启后会自动测量与RSI服务器的时差\n网络延迟不稳定时校准可能不准").pack(side='left', padx=3)
 
     # ========== 3. 🕐 手动偏移 ==========
     manual_section = tk.Frame(container, bg=GUI_BG_COLOR)
-    manual_section.pack(fill='x', padx=30, pady=6)
+    manual_section.pack(fill='x', padx=14, pady=2)
     manual_label_row = tk.Frame(manual_section, bg=GUI_BG_COLOR)
     manual_label_row.pack(anchor='w')
-    tk.Label(manual_label_row, text="🕐 手动偏移", font=("Microsoft YaHei UI", 14, "bold"),
+    tk.Label(manual_label_row, text="🕐 手动偏移", font=("Microsoft YaHei UI", 11, "bold"),
              fg=GUI_TITLE_COLOR, bg=GUI_BG_COLOR).pack(side='left')
     _create_help_button(manual_label_row, "正数=本地比服务器快，需多等\n负数=本地比服务器慢，可提前发\n如本地快0.15秒，填+0.15").pack(side='left', padx=3)
     manual_row = tk.Frame(manual_section, bg=GUI_BG_COLOR)
-    manual_row.pack(anchor='w', pady=(4, 0))
-    manual_offset_entry = tk.Entry(manual_row, font=("Microsoft YaHei UI", 12), width=10,
+    manual_row.pack(anchor='w', pady=(2, 0))
+    manual_offset_entry = tk.Entry(manual_row, font=("Microsoft YaHei UI", 10), width=8,
                                    bg="white", fg="black", insertbackground="black", relief='flat', bd=2)
     manual_offset_entry.insert(0, current_manual_offset)
     manual_offset_entry.pack(side='left')
-    tk.Label(manual_row, text="秒(正值=提前)", font=("Microsoft YaHei UI", 11),
-             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR, padx=8).pack(side='left')
+    tk.Label(manual_row, text="秒(正值=提前)", font=("Microsoft YaHei UI", 9),
+             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR, padx=4).pack(side='left')
 
     # ========== 4. 🌐 代理地址 ==========
     proxy_section = tk.Frame(container, bg=GUI_BG_COLOR)
-    proxy_section.pack(fill='x', padx=30, pady=6)
-    tk.Label(proxy_section, text="🌐 代理地址", font=("Microsoft YaHei UI", 14, "bold"),
+    proxy_section.pack(fill='x', padx=14, pady=2)
+    tk.Label(proxy_section, text="🌐 代理地址", font=("Microsoft YaHei UI", 11, "bold"),
              fg=GUI_TITLE_COLOR, bg=GUI_BG_COLOR).pack(anchor='w')
     proxy_row = tk.Frame(proxy_section, bg=GUI_BG_COLOR)
-    proxy_row.pack(anchor='w', pady=(4, 0))
-    proxy_entry = tk.Entry(proxy_row, font=("Microsoft YaHei UI", 12), width=28,
+    proxy_row.pack(anchor='w', pady=(2, 0))
+    proxy_entry = tk.Entry(proxy_row, font=("Microsoft YaHei UI", 10), width=20,
                            bg="white", fg="black", insertbackground="black", relief='flat', bd=2)
     proxy_entry.insert(0, current_proxy or "")
     proxy_entry.pack(side='left')
-    tk.Label(proxy_row, text="(留空自动检测)", font=("Microsoft YaHei UI", 11),
-             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR, padx=12).pack(side='left')
+    tk.Label(proxy_row, text="(留空自动检测)", font=("Microsoft YaHei UI", 9),
+             fg=GUI_TEXT_COLOR, bg=GUI_BG_COLOR, padx=6).pack(side='left')
 
     # ========== 底部按钮 ==========
     btn_frame = tk.Frame(container, bg=GUI_BG_COLOR)
-    btn_frame.pack(pady=18)
+    btn_frame.pack(pady=6)
 
     # 返回值存储（必须在on_confirm定义之前初始化）
     result = {"manual_offset": current_manual_offset,
               "auto_calibrate": current_auto_calibrate,
-              "proxy": current_proxy or ""}
+              "proxy": current_proxy or "",
+              "turbo_mode": current_turbo,
+              "turbo_next_delay": current_turbo_next_delay,
+              "turbo_validate_delay": current_turbo_validate_delay}
 
     def on_confirm():
         result["manual_offset"] = manual_offset_entry.get().strip()
         result["auto_calibrate"] = auto_calib_var.get()
         result["proxy"] = proxy_entry.get().strip()
+        result["turbo_mode"] = turbo_var.get()
+        try:
+            result["turbo_next_delay"] = float(turbo_ns_entry.get().strip())
+        except:
+            result["turbo_next_delay"] = 0.2
+        try:
+            result["turbo_validate_delay"] = float(turbo_val_entry.get().strip())
+        except:
+            result["turbo_validate_delay"] = 0.15
         dialog.destroy()
 
     def on_cancel():
         dialog.destroy()
 
-    tk.Button(btn_frame, text="确认", command=on_confirm, font=("Microsoft YaHei UI", 12, "bold"),
-              fg="white", bg="#7B8FB7", relief='flat', padx=22, pady=8, cursor='hand2').pack(side='left', padx=15)
-    tk.Button(btn_frame, text="取消", command=on_cancel, font=("Microsoft YaHei UI", 12, "bold"),
-              fg="white", bg="#9E6B7A", relief='flat', padx=22, pady=8, cursor='hand2').pack(side='left', padx=15)
+    tk.Button(btn_frame, text="确认", command=on_confirm, font=("Microsoft YaHei UI", 10, "bold"),
+              fg="white", bg="#7B8FB7", relief='flat', padx=16, pady=6, cursor='hand2').pack(side='left', padx=15)
+    tk.Button(btn_frame, text="取消", command=on_cancel, font=("Microsoft YaHei UI", 10, "bold"),
+              fg="white", bg="#9E6B7A", relief='flat', padx=16, pady=6, cursor='hand2').pack(side='left', padx=15)
 
     dialog.protocol("WM_DELETE_WINDOW", on_cancel)
     dialog.wait_window(dialog)
@@ -724,6 +777,11 @@ def _show_config_dialog():
     manual_offset_var = tk.StringVar(value=saved_config.get("manual_time_offset", "-0.1") if saved_config else "-0.1")
     auto_calibrate_var = tk.BooleanVar(value=saved_config.get("auto_calibrate", False) if saved_config else False)
     
+    # ===== V4.0 TURBO 闪电狂暴模式变量 =====
+    turbo_mode_var = tk.BooleanVar(value=saved_config.get("turbo_mode", False) if saved_config else False)
+    turbo_next_delay_var = tk.DoubleVar(value=saved_config.get("turbo_next_delay", 0.2) if saved_config else 0.2)
+    turbo_validate_delay_var = tk.DoubleVar(value=saved_config.get("turbo_validate_delay", 0.15) if saved_config else 0.15)
+    
     # ===== 输入方式选择区域 =====
     input_mode_frame = tk.Frame(root, bg=CFG_BG_COLOR, padx=4, pady=2)
     input_mode_frame.place(relx=0.5, y=340, anchor='n')
@@ -852,10 +910,19 @@ def _show_config_dialog():
     advanced_proxy = tk.StringVar(value=saved_config.get("proxy", CFG["PROXY"]) if saved_config else (CFG["PROXY"] or ""))
     
     def _open_advanced_settings():
-        result = _show_advanced_settings_dialog(root, manual_offset_var.get(), auto_calibrate_var.get(), advanced_proxy.get())
+        result = _show_advanced_settings_dialog(root, 
+                                          manual_offset_var.get(), 
+                                          auto_calibrate_var.get(), 
+                                          advanced_proxy.get(),
+                                          turbo_mode_var.get(),
+                                          turbo_next_delay_var.get(),
+                                          turbo_validate_delay_var.get())
         manual_offset_var.set(result["manual_offset"])
         auto_calibrate_var.set(result["auto_calibrate"])
         advanced_proxy.set(result["proxy"])
+        turbo_mode_var.set(result["turbo_mode"])
+        turbo_next_delay_var.set(result["turbo_next_delay"])
+        turbo_validate_delay_var.set(result["turbo_validate_delay"])
     
     advanced_btn = tk.Button(root, text="高级设置", command=_open_advanced_settings,
                               font=("Microsoft YaHei UI", 11),
@@ -914,6 +981,9 @@ def _show_config_dialog():
             "ambush_mode": ambush_mode_var.get(),
             "manual_time_offset": manual_offset_var.get(),
             "auto_calibrate": auto_calibrate_var.get(),
+            "turbo_mode": turbo_mode_var.get(),
+            "turbo_next_delay": turbo_next_delay_var.get(),
+            "turbo_validate_delay": turbo_validate_delay_var.get(),
         }
         _save_config(config_data)
         
@@ -940,6 +1010,9 @@ def _show_config_dialog():
         CFG["MANUAL_TIME_OFFSET"] = manual_offset_var.get()
         
         CFG["AUTO_CALIBRATE"] = bool(auto_calibrate_var.get())
+        CFG["TURBO_MODE"] = bool(turbo_mode_var.get())
+        CFG["TURBO_NEXT_DELAY"] = float(turbo_next_delay_var.get())
+        CFG["TURBO_VALIDATE_DELAY"] = float(turbo_validate_delay_var.get())
         
         result["continue"] = True
         root.destroy()

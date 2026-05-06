@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-咩咩Kick! V3.0.0
+咩咩Kick! V4.0.0 ⚡TURBO
 RSI GraphQL API 客户端模块
 """
 
@@ -532,6 +532,11 @@ class RSIClient:
         3. 再次NextStep（跳过地址绑定，RSI使用默认地址）
         4. NextStep (flow.moveNext)
         5. 获取token/mark → validate
+        
+        V4.0 TURBO模式：
+        - NextStep1发出后，不等HTTP完整响应，固定短延迟后直接发NextStep2
+        - NextStep2发出后，同样短延迟后直接发Validate
+        - 失败自动回退到正常等待模式重试
         """
         # 步骤1: 获取商品价格（优先级：预设 > 拦截器 > 探价 > 报错）
         log.info("📍 [极速结账] 开始结账...")
@@ -585,23 +590,66 @@ class RSIClient:
             else:
                 log.warning(f"   ⚠️ 信用点结果: {json.dumps(result, ensure_ascii=False)[:300]}")
         
-        # 步骤3: NextStep (flow.moveNext)
-        log.info("📍 [极速结账] NextStep...")
-        result = self.gql("NextStepMutation", {"storeFront": "pledge"})
-        time.sleep(0.1)
-        move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
-        flow_steps = result.get('data', {}).get('store', {}).get('cart', {}).get('flow', {}).get('steps', [])
-        log.info(f"   moveNext={move_next}, steps={[s.get('step') for s in flow_steps]}")
+        # ===== V4.0 TURBO激进模式 =====
+        turbo_mode = CFG.get("TURBO_MODE", False)
+        turbo_next_delay = CFG.get("TURBO_NEXT_DELAY", 0.2)
+        turbo_validate_delay = CFG.get("TURBO_VALIDATE_DELAY", 0.15)
         
-        # 步骤4: 再次NextStep（跳过地址绑定，RSI使用默认地址）
-        log.info("📍 [极速结账] NextStep (确认)...")
-        result = self.gql("NextStepMutation", {"storeFront": "pledge"})
-        time.sleep(0.1)
-        move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
-        order_slug = result.get('data', {}).get('store', {}).get('order', {}).get('slug', '')
-        log.info(f"   moveNext={move_next}, orderSlug={order_slug}")
+        if turbo_mode:
+            log.info(f"⚡⚡⚡ [TURBO狂暴模式] 激进结账！延迟={turbo_next_delay}s ⚡⚡⚡")
         
-        # 步骤6: validate确认付款（信用点付款无需recaptcha token）
+        # 步骤3-4: NextStep x2（TURBO模式激进发送）
+        turbo_fallback = False
+        
+        if turbo_mode:
+            # ===== TURBO模式：NextStep1不等响应，短延迟直接发NextStep2 =====
+            t_ns1 = time.time()
+            log.info("📍 [极速结账] ⚡TURBO NextStep1...")
+            result_ns1 = self.gql("NextStepMutation", {"storeFront": "pledge"})
+            log.info(f"   ⏱ NextStep1响应耗时: {(time.time()-t_ns1)*1000:.0f}ms")
+            
+            # 解析NextStep1响应
+            move_next_1 = result_ns1.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+            flow_steps = result_ns1.get('data', {}).get('store', {}).get('cart', {}).get('flow', {}).get('steps', [])
+            log.info(f"   moveNext={move_next_1}, steps={[s.get('step') for s in flow_steps]}")
+            
+            # 固定短延迟后直接发NextStep2
+            log.info(f"📍 [极速结账] ⚡TURBO NextStep2 (延迟{turbo_next_delay}s)...")
+            time.sleep(turbo_next_delay)
+            t_ns2 = time.time()
+            result_ns2 = self.gql("NextStepMutation", {"storeFront": "pledge"})
+            log.info(f"   ⏱ NextStep2响应耗时: {(time.time()-t_ns2)*1000:.0f}ms")
+            
+            move_next_2 = result_ns2.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+            order_slug = result_ns2.get('data', {}).get('store', {}).get('order', {}).get('slug', '')
+            log.info(f"   moveNext={move_next_2}, orderSlug={order_slug}")
+            
+            # 检查NextStep2结果
+            if not move_next_2:
+                log.warning("⚠️ TURBO NextStep2失败，尝试正常模式补救...")
+                turbo_fallback = True
+            
+            # 短延迟后直接发Validate
+            log.info(f"📍 [极速结账] ⚡TURBO Validate (延迟{turbo_validate_delay}s)...")
+            time.sleep(turbo_validate_delay)
+        else:
+            # ===== 正常模式：等待HTTP完整响应 =====
+            log.info("📍 [极速结账] NextStep...")
+            result = self.gql("NextStepMutation", {"storeFront": "pledge"})
+            time.sleep(0.1)
+            move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+            flow_steps = result.get('data', {}).get('store', {}).get('cart', {}).get('flow', {}).get('steps', [])
+            log.info(f"   moveNext={move_next}, steps={[s.get('step') for s in flow_steps]}")
+            
+            # 步骤4: 再次NextStep（跳过地址绑定，RSI使用默认地址）
+            log.info("📍 [极速结账] NextStep (确认)...")
+            result = self.gql("NextStepMutation", {"storeFront": "pledge"})
+            time.sleep(0.1)
+            move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+            order_slug = result.get('data', {}).get('store', {}).get('order', {}).get('slug', '')
+            log.info(f"   moveNext={move_next}, orderSlug={order_slug}")
+        
+        # 步骤6: validate确认付款（TURBO模式或正常模式）
         log.info("📍 [极速结账] 确认付款...")
         
         result = self.gql("CartValidateCartMutation", {"token": "", "mark": "", "storeFront": "pledge"})
@@ -615,7 +663,49 @@ class RSIClient:
             log.info(f"   🎉 付款成功! 订单号: {order_num}")
             return True
         else:
+            # TURBO模式失败，尝试正常模式重试
+            if turbo_mode and not turbo_fallback:
+                log.warning("⚠️ TURBO模式付款失败，尝试正常模式重试...")
+                turbo_fallback = True
+                return self._normal_checkout_retry(total)
+            
             log.error(f"   ❌ 付款失败: {json.dumps(result, ensure_ascii=False)[:500]}")
+            return False
+    
+    def _normal_checkout_retry(self, total: float) -> bool:
+        """TURBO模式失败后，回退到正常模式重试结账"""
+        log.info("📍 [回退模式] 正常等待重试结账...")
+        
+        try:
+            # 重新获取购物车状态
+            result = self.gql("NextStepMutation", {"storeFront": "pledge"})
+            time.sleep(0.1)
+            move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+            log.info(f"   正常NextStep1: moveNext={move_next}")
+            
+            time.sleep(0.1)
+            result = self.gql("NextStepMutation", {"storeFront": "pledge"})
+            time.sleep(0.1)
+            move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+            order_slug = result.get('data', {}).get('store', {}).get('order', {}).get('slug', '')
+            log.info(f"   正常NextStep2: moveNext={move_next}, orderSlug={order_slug}")
+            
+            # Validate
+            result = self.gql("CartValidateCartMutation", {"token": "", "mark": "", "storeFront": "pledge"})
+            time.sleep(0.1)
+            
+            validate_result = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('validate', '')
+            order_slug = result.get('data', {}).get('store', {}).get('order', {}).get('slug', '')
+            
+            if validate_result or order_slug:
+                order_num = order_slug or validate_result
+                log.info(f"   🎉 回退模式付款成功! 订单号: {order_num}")
+                return True
+            else:
+                log.error(f"   ❌ 回退模式付款失败: {json.dumps(result, ensure_ascii=False)[:500]}")
+                return False
+        except Exception as e:
+            log.error(f"   ❌ 回退模式异常: {e}")
             return False
 
     
@@ -1291,8 +1381,15 @@ class RSIClient:
         1. 从购物车页面DOM读取商品总价
         2. T-30s执行预装填：AddCreditMutation → NextStepMutation → NextStepMutation（跳过地址绑定）
         3. T-0s执行：CartValidateCartMutation
+        
+        V4.0 TURBO模式：预装填NextStep激进发送
         """
         log.info("📍 [伏击模式] 开始执行...")
+        
+        # TURBO模式标志
+        turbo_mode = CFG.get("TURBO_MODE", False)
+        if turbo_mode:
+            log.info(f"⚡⚡⚡ [伏击TURBO] 激进预装填！⚡⚡⚡")
         
         # 步骤1: 读取购物车总价
         cart_info = self.get_cart_items_from_page()
@@ -1323,29 +1420,56 @@ class RSIClient:
         else:
             log.warning(f"   ⚠️ 信用点结果: {json.dumps(result, ensure_ascii=False)[:300]}")
         
-        # 步骤3: NextStep
-        log.info("📍 [伏击模式] NextStep...")
-        result = self.gql("NextStepMutation", {"storeFront": "pledge"})
-        time.sleep(0.1)
-        move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
-        log.info(f"   moveNext={move_next}")
-        
-        # 步骤4: 再次NextStep（跳过地址绑定，RSI使用默认地址）
-        log.info("📍 [伏击模式] NextStep (确认)...")
-        result = self.gql("NextStepMutation", {"storeFront": "pledge"})
-        time.sleep(0.1)
-        move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
-        order_slug = result.get('data', {}).get('store', {}).get('order', {}).get('slug', '')
-        log.info(f"   moveNext={move_next}, orderSlug={order_slug}")
+        # 步骤3-4: NextStep x2
+        if turbo_mode:
+            # ===== 伏击TURBO模式：NextStep激进发送 =====
+            turbo_next_delay = CFG.get("TURBO_NEXT_DELAY", 0.2)
+            
+            t_ns1 = time.time()
+            log.info("📍 [伏击TURBO] ⚡NextStep1...")
+            result_ns1 = self.gql("NextStepMutation", {"storeFront": "pledge"})
+            log.info(f"   ⏱ NextStep1响应耗时: {(time.time()-t_ns1)*1000:.0f}ms")
+            
+            move_next_1 = result_ns1.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+            log.info(f"   moveNext={move_next_1}")
+            
+            # 短延迟后直接发NextStep2
+            log.info(f"📍 [伏击TURBO] ⚡NextStep2 (延迟{turbo_next_delay}s)...")
+            time.sleep(turbo_next_delay)
+            t_ns2 = time.time()
+            result_ns2 = self.gql("NextStepMutation", {"storeFront": "pledge"})
+            log.info(f"   ⏱ NextStep2响应耗时: {(time.time()-t_ns2)*1000:.0f}ms")
+            
+            move_next_2 = result_ns2.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+            order_slug = result_ns2.get('data', {}).get('store', {}).get('order', {}).get('slug', '')
+            log.info(f"   moveNext={move_next_2}, orderSlug={order_slug}")
+        else:
+            # ===== 正常伏击模式 =====
+            log.info("📍 [伏击模式] NextStep...")
+            result = self.gql("NextStepMutation", {"storeFront": "pledge"})
+            time.sleep(0.1)
+            move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+            log.info(f"   moveNext={move_next}")
+            
+            # 步骤4: 再次NextStep（跳过地址绑定，RSI使用默认地址）
+            log.info("📍 [伏击模式] NextStep (确认)...")
+            result = self.gql("NextStepMutation", {"storeFront": "pledge"})
+            time.sleep(0.1)
+            move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+            order_slug = result.get('data', {}).get('store', {}).get('order', {}).get('slug', '')
+            log.info(f"   moveNext={move_next}, orderSlug={order_slug}")
         
         log.info("📍 [伏击模式] 预装填完成，等待T-0...")
         
         # 预装填完成，后续validate由主线程在精确时间执行
         self.cart_data['ambush_ready'] = True
+        self.cart_data['ambush_turbo'] = turbo_mode
         return True
     
     def _ambush_refill(self) -> bool:
         """伏击模式 - 重新装填信用点+NextStep"""
+        turbo_mode = CFG.get("TURBO_MODE", False)
+        
         log.info("📍 [伏击模式] 重新装填...")
         total = self.cart_total or self.cart_data.get('total', 0)
         if total <= 0:
@@ -1356,26 +1480,56 @@ class RSIClient:
             credits = result.get('data', {}).get('store', {}).get('cart', {}).get('totals', {}).get('credits', {})
             if credits:
                 log.info(f"   ✅ 信用点重装: {credits.get('amount', '?')}, max={credits.get('maxApplicable', '?')}")
+        
         # NextStep x2
-        result = self.gql("NextStepMutation", {"storeFront": "pledge"})
-        move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
-        log.info(f"   NextStep1: moveNext={move_next}")
-        result = self.gql("NextStepMutation", {"storeFront": "pledge"})
-        move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
-        order_slug = result.get('data', {}).get('store', {}).get('order', {}).get('slug', '')
-        log.info(f"   NextStep2: moveNext={move_next}, orderSlug={order_slug}")
+        if turbo_mode:
+            turbo_next_delay = CFG.get("TURBO_NEXT_DELAY", 0.2)
+            
+            t_ns1 = time.time()
+            result = self.gql("NextStepMutation", {"storeFront": "pledge"})
+            log.info(f"   ⚡TURBO NextStep1: ⏱{(time.time()-t_ns1)*1000:.0f}ms, moveNext={result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)}")
+            
+            time.sleep(turbo_next_delay)
+            t_ns2 = time.time()
+            result = self.gql("NextStepMutation", {"storeFront": "pledge"})
+            move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+            order_slug = result.get('data', {}).get('store', {}).get('order', {}).get('slug', '')
+            log.info(f"   ⚡TURBO NextStep2: ⏱{(time.time()-t_ns2)*1000:.0f}ms, moveNext={move_next}, orderSlug={order_slug}")
+        else:
+            result = self.gql("NextStepMutation", {"storeFront": "pledge"})
+            move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+            log.info(f"   NextStep1: moveNext={move_next}")
+            result = self.gql("NextStepMutation", {"storeFront": "pledge"})
+            move_next = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('flow', {}).get('moveNext', False)
+            order_slug = result.get('data', {}).get('store', {}).get('order', {}).get('slug', '')
+            log.info(f"   NextStep2: moveNext={move_next}, orderSlug={order_slug}")
+        
         return move_next
 
     def ambush_validate(self) -> bool:
         """伏击模式 - T-0时刻执行最终验证（带装填保护）
         
         validate失败后检查流程状态，如流程丢失则重新装填再重试
+        
+        V4.0 TURBO模式：激进模式失败后自动回退到正常模式重试
         """
+        turbo_mode = CFG.get("TURBO_MODE", False)
+        turbo_fallback_done = False
+        
         refill_count = 0
         for attempt in range(1, 5):
             log.info(f"📍 [伏击模式] T-0 执行验证... (尝试 {attempt}/4)")
             
+            if turbo_mode and not turbo_fallback_done:
+                # TURBO模式激进验证
+                turbo_validate_delay = CFG.get("TURBO_VALIDATE_DELAY", 0.15)
+                log.info(f"📍 [伏击TURBO] ⚡激进Validate (延迟{turbo_validate_delay}s)...")
+                time.sleep(turbo_validate_delay)
+            
+            t_validate = time.time()
             result = self.gql("CartValidateCartMutation", {"token": "", "mark": "", "storeFront": "pledge"})
+            if turbo_mode:
+                log.info(f"   ⏱ Validate响应耗时: {(time.time()-t_validate)*1000:.0f}ms")
             
             validate_result = result.get('data', {}).get('store', {}).get('cart', {}).get('mutations', {}).get('validate', '')
             order_slug = result.get('data', {}).get('store', {}).get('order', {}).get('slug', '')
@@ -1389,6 +1543,22 @@ class RSIClient:
                 except:
                     pass
                 return True
+            
+            # TURBO模式失败，自动回退到正常模式
+            if turbo_mode and not turbo_fallback_done:
+                log.warning("⚠️ TURBO模式验证失败，尝试正常模式回退...")
+                turbo_fallback_done = True
+                turbo_mode = False  # 关闭TURBO模式
+                # 重新装填用正常模式
+                if refill_count < 2:
+                    refill_count += 1
+                    log.warning(f"   ⚠️ 流程丢失，重新装填 ({refill_count}/2)...")
+                    if self._ambush_refill():
+                        time.sleep(0.2)
+                    else:
+                        log.error("   ❌ 重新装填失败")
+                        time.sleep(0.3)
+                    continue
             
             # validate失败，检查流程是否还在
             if attempt < 4:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-咩咩Kick! V3.0.0
+咩咩Kick! V4.0.0 ⚡TURBO
 配置常量和工具函数模块
 """
 
@@ -42,7 +42,7 @@ GUI_BG_NONE = "#A8B4D4"  # 接近背景底色，浅蓝灰白
 # 命令行参数
 # ============================================================
 
-_parser = argparse.ArgumentParser(description='咩咩Kick! V3.0.0')
+_parser = argparse.ArgumentParser(description='咩咩Kick! V4.0.0 ⚡TURBO')
 _parser.add_argument('--no-gui', action='store_true', help='禁用GUI，仅使用命令行模式')
 _parser.add_argument('--test', '-t', action='store_true', help='测试模式')
 
@@ -91,6 +91,11 @@ CFG = {
     "SKU_ID": "",
     "MANUAL_TIME_OFFSET": "-0.1",
     "AUTO_CALIBRATE": False,
+    
+    # ===== V4.0 闪电狂暴模式 (TURBO/RAGE Mode) =====
+    "TURBO_MODE": False,  # 激进模式开关：NextStep不等HTTP响应，短延迟直接发下一个
+    "TURBO_NEXT_DELAY": 0.2,  # 激进模式NextStep间隔延迟（秒），默认0.2s
+    "TURBO_VALIDATE_DELAY": 0.15,  # 激进模式Validate间隔延迟（秒）
     "COOKIE_FILE": os.path.join(BASE_PATH, "scautobuy", "rsi_cookies.json"),
     "LOG_FILE": os.path.join(BASE_PATH, "scautobuy", "rsi_buy.log"),
     "SCREENSHOT_DIR": os.path.join(BASE_PATH, "scautobuy", "screenshots"),

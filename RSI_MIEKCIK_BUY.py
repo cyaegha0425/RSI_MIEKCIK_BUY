@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""咩咩Kick! V3.0.0 - 入口"""
+"""咩咩Kick! V4.0.0 ⚡TURBO闪电狂暴版 - 入口"""
 from modules.main import run, test, help
 from modules.config import get_args
 
